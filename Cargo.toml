@@ -28,7 +28,16 @@ harness = false
 [profile.release]
 lto = "thin"
 codegen-units = 1
+debug = 1
 
 [profile.bench]
 lto = "thin"
 codegen-units = 1
+debug = 1
+
+[profile.release-optimized]
+inherits = "release"
+lto = "fat"
+panic = "abort"
+strip = true
+debug = false
