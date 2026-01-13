@@ -93,6 +93,7 @@ impl RocCompressor {
     }
 
     /// Encode a u64 as varint into the buffer.
+    #[inline]
     fn encode_varint(value: u64, buf: &mut Vec<u8>) {
         let mut val = value;
         while val >= 0x80 {
@@ -103,6 +104,7 @@ impl RocCompressor {
     }
 
     /// Decode a varint from the buffer, returning (value, bytes_consumed).
+    #[inline]
     fn decode_varint(buf: &[u8]) -> Result<(u64, usize), CompressionError> {
         let mut value = 0u64;
         let mut shift = 0;
