@@ -1,7 +1,7 @@
 //! Benchmarks for ID set compression.
 
+use cnk::{IdSetCompressor, RocCompressor};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use idpaq::{IdSetCompressor, RocCompressor};
 
 fn bench_compress(c: &mut Criterion) {
     let mut group = c.benchmark_group("compress");

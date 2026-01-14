@@ -1,6 +1,6 @@
 //! ID set compression primitives.
 //!
-//! `idpaq` provides compression algorithms for sorted, unique ID sets where
+//! `cnk` provides compression algorithms for sorted, unique ID sets where
 //! order doesn't matter. This is common in information retrieval:
 //!
 //! - IVF posting lists (which vectors belong to which cluster)
@@ -23,7 +23,7 @@
 //! # Example
 //!
 //! ```rust
-//! use idpaq::{RocCompressor, IdSetCompressor};
+//! use cnk::{RocCompressor, IdSetCompressor};
 //!
 //! let compressor = RocCompressor::new();
 //! let ids = vec![1u32, 5, 10, 20, 50];

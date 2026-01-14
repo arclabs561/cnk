@@ -1,6 +1,6 @@
-# idpaq
+# cnk
 
-ID set compression primitives.
+Set compression via C(n,k).
 
 Dual-licensed under MIT or Apache-2.0.
 
@@ -19,7 +19,7 @@ Compression for sorted, unique ID sets where order doesn't matter:
 ## Usage
 
 ```rust
-use idpaq::{RocCompressor, IdSetCompressor};
+use cnk::{RocCompressor, IdSetCompressor};
 
 let compressor = RocCompressor::new();
 let ids = vec![1u32, 5, 10, 20, 50];
@@ -48,6 +48,6 @@ ROC approaches this bound by treating permutation as a latent variable.
 - `ans` — full ANS entropy coding via `constriction`
 - `full` — all features
 
-## Why "idpaq"
+## Why "cnk"
 
-ID packing. Compress those posting lists.
+C(n,k) = binomial coefficient. The math behind set compression.

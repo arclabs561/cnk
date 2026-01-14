@@ -3,25 +3,21 @@
 //! These tests verify mathematical invariants that must hold for all inputs,
 //! using proptest to generate random test cases.
 
-use idpaq::{IdSetCompressor, RocCompressor};
+use cnk::{IdSetCompressor, RocCompressor};
 use proptest::prelude::*;
 
 /// Generate a sorted, unique set of IDs within a universe.
-fn sorted_unique_ids(
-    max_len: usize,
-    universe_size: u32,
-) -> impl Strategy<Value = (Vec<u32>, u32)> {
+fn sorted_unique_ids(max_len: usize, universe_size: u32) -> impl Strategy<Value = (Vec<u32>, u32)> {
     // Generate random subset by sampling without replacement
     (1..=max_len).prop_flat_map(move |len| {
         // Universe must be at least as large as the set
         let min_universe = len as u32;
         let actual_universe = universe_size.max(min_universe);
 
-        proptest::collection::btree_set(0..actual_universe, len)
-            .prop_map(move |set| {
-                let ids: Vec<u32> = set.into_iter().collect();
-                (ids, actual_universe)
-            })
+        proptest::collection::btree_set(0..actual_universe, len).prop_map(move |set| {
+            let ids: Vec<u32> = set.into_iter().collect();
+            (ids, actual_universe)
+        })
     })
 }
 
@@ -30,11 +26,10 @@ fn sparse_ids(max_len: usize) -> impl Strategy<Value = (Vec<u32>, u32)> {
     (1..=max_len).prop_flat_map(move |len| {
         // Large universe, small set
         let universe = 1_000_000u32;
-        proptest::collection::btree_set(0..universe, len)
-            .prop_map(move |set| {
-                let ids: Vec<u32> = set.into_iter().collect();
-                (ids, universe)
-            })
+        proptest::collection::btree_set(0..universe, len).prop_map(move |set| {
+            let ids: Vec<u32> = set.into_iter().collect();
+            (ids, universe)
+        })
     })
 }
 
@@ -280,7 +275,10 @@ fn compression_ratio_improves_with_density() {
 
     println!("Dense: {:.2} bytes/id", dense_bytes_per_id);
     println!("Sparse (delta=100): {:.2} bytes/id", sparse_bytes_per_id);
-    println!("Very sparse (delta=1000): {:.2} bytes/id", very_sparse_bytes_per_id);
+    println!(
+        "Very sparse (delta=1000): {:.2} bytes/id",
+        very_sparse_bytes_per_id
+    );
 }
 
 #[test]

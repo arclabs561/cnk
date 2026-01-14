@@ -1,8 +1,8 @@
 [package]
-name = "idpaq"
+name = "cnk"
 version = "0.1.0"
 edition = "2021"
-description = "ID set compression primitives (ROC, ANS, delta encoding)"
+description = "Set compression via C(n,k): ROC, ANS, delta encoding"
 license = "MIT OR Apache-2.0"
 keywords = ["compression", "entropy", "ans", "inverted-index"]
 categories = ["compression", "algorithms"]

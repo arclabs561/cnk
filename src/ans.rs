@@ -40,7 +40,12 @@ impl AnsEncoder {
     /// * `cum_freq` - Cumulative frequency of symbol (0..total)
     /// * `freq` - Frequency of symbol
     /// * `total` - Total frequency (power of 2 for fast division)
-    pub fn encode(&mut self, cum_freq: u32, freq: u32, _total: u32) -> Result<(), CompressionError> {
+    pub fn encode(
+        &mut self,
+        cum_freq: u32,
+        freq: u32,
+        _total: u32,
+    ) -> Result<(), CompressionError> {
         // Placeholder: actual ANS encoding would be:
         // state = (state / freq) * total + (state % freq) + cum_freq
         self.state = self.state.wrapping_add(cum_freq as u64 + freq as u64);

@@ -317,7 +317,11 @@ mod tests {
         // Consecutive IDs should compress well (deltas are all 1)
         let uncompressed_size = ids.len() * 4;
         let ratio = uncompressed_size as f64 / compressed.len() as f64;
-        assert!(ratio > 2.0, "Consecutive IDs should compress well: {}", ratio);
+        assert!(
+            ratio > 2.0,
+            "Consecutive IDs should compress well: {}",
+            ratio
+        );
     }
 
     #[test]
