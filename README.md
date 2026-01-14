@@ -2,6 +2,8 @@
 
 ID set compression primitives.
 
+Dual-licensed under MIT or Apache-2.0.
+
 ## What
 
 Compression for sorted, unique ID sets where order doesn't matter:
@@ -33,9 +35,11 @@ assert_eq!(ids, decompressed);
 
 ## Theory
 
-A set of `n` elements from universe `[N]` has `C(N, n)` possibilities.
-Information-theoretic minimum: `log2(C(N, n))` bits.
-This is less than encoding a sequence (`log2(N^n)` bits).
+A set of $n$ elements from universe $[N]$ has $\binom{N}{n}$ possibilities.
+
+Information-theoretic minimum: $\log_2 \binom{N}{n}$ bits.
+
+This is less than encoding a sequence: $n \log_2 N$ bits (which ignores uniqueness).
 
 ROC approaches this bound by treating permutation as a latent variable.
 
