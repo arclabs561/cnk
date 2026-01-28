@@ -3,15 +3,15 @@ name = "cnk"
 version = "0.1.0"
 authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
-description = "ID set compression primitives (gap+varint; ROC/ANS planned)"
+description = "ID set compression primitives (gap+varint; ROC/Elias-Fano planned)"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/arclabs561/cnk"
-keywords = ["compression", "entropy", "ans", "inverted-index"]
+keywords = ["compression", "entropy", "inverted-index"]
 categories = ["compression", "algorithms"]
 
 [features]
 default = []
-# Enable foundational ANS entropy coding
+# Enable foundational ANS entropy coding (internal module; API may change).
 ans = ["dep:ans"]
 # Enable Elias-Fano and other succinct baselines
 sbits = ["dep:sbits"]
@@ -22,6 +22,8 @@ full = ["ans", "sbits"]
 ans = { version = "0.1.0", optional = true }
 sbits = { version = "0.1.0", optional = true }
 thiserror = "2.0"
+[lib]
+path = "src/lib.rs"
 
 [dev-dependencies]
 proptest = "1.5"

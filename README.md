@@ -17,5 +17,5 @@ let decompressed = compressor.decompress_set(&compressed, universe_size).unwrap(
 assert_eq!(ids, decompressed);
 ```
 
-A set of size n from universe [N] has \(\binom{N}{n}\) possibilities, so the information-theoretic minimum is \(\log_2 \binom{N}{n}\) bits.
+A set of size \(n\) from universe \([N]\) has $\binom{N}{n}$ possibilities, so the information-theoretic minimum is $\log_2 \binom{N}{n}$ bits.
 ROC approaches this bound by treating permutation as a latent variable.
