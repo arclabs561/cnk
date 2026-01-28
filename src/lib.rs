@@ -47,6 +47,8 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 
+#[cfg(feature = "sbits")]
+mod elias_fano;
 mod error;
 mod roc;
 mod traits;
@@ -54,6 +56,8 @@ mod traits;
 #[cfg(feature = "ans")]
 mod ans;
 
+#[cfg(feature = "sbits")]
+pub use elias_fano::EliasFanoCompressor;
 pub use error::CompressionError;
 pub use roc::RocCompressor;
 pub use traits::IdSetCompressor;

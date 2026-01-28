@@ -10,7 +10,7 @@ fn bench_compress(c: &mut Criterion) {
 
     for num_ids in [100, 1000, 10000] {
         let ids: Vec<u32> = (0..num_ids).map(|i| i * 100).collect();
-        let universe_size = (num_ids * 100 + 10000) as u32;
+        let universe_size = num_ids * 100 + 10_000;
 
         group.throughput(Throughput::Elements(num_ids as u64));
         group.bench_with_input(BenchmarkId::new("roc", num_ids), &num_ids, |bench, _| {
@@ -28,7 +28,7 @@ fn bench_decompress(c: &mut Criterion) {
 
     for num_ids in [100, 1000, 10000] {
         let ids: Vec<u32> = (0..num_ids).map(|i| i * 100).collect();
-        let universe_size = (num_ids * 100 + 10000) as u32;
+        let universe_size = num_ids * 100 + 10_000;
         let compressed = compressor.compress_set(&ids, universe_size).unwrap();
 
         group.throughput(Throughput::Elements(num_ids as u64));
@@ -49,7 +49,7 @@ fn bench_round_trip(c: &mut Criterion) {
 
     for num_ids in [100, 1000] {
         let ids: Vec<u32> = (0..num_ids).map(|i| i * 100).collect();
-        let universe_size = (num_ids * 100 + 10000) as u32;
+        let universe_size = num_ids * 100 + 10_000;
 
         group.throughput(Throughput::Elements(num_ids as u64));
         group.bench_with_input(BenchmarkId::new("roc", num_ids), &num_ids, |bench, _| {
