@@ -49,8 +49,14 @@
 
 #[cfg(feature = "sbits")]
 mod elias_fano;
+#[cfg(feature = "sbits")]
+mod partitioned_elias_fano;
 mod error;
 mod roc;
+mod stats;
+mod choose;
+mod auto;
+mod envelope;
 mod traits;
 
 #[cfg(feature = "ans")]
@@ -58,8 +64,14 @@ mod ans;
 
 #[cfg(feature = "sbits")]
 pub use elias_fano::EliasFanoCompressor;
+#[cfg(feature = "sbits")]
+pub use partitioned_elias_fano::PartitionedEliasFanoCompressor;
 pub use error::CompressionError;
 pub use roc::RocCompressor;
+pub use stats::IdListStats;
+pub use choose::{choose_method, ChooseConfig, CodecChoice};
+pub use auto::{compress_set_auto, decompress_set_auto, AutoConfig};
+pub use envelope::{compress_set_enveloped, decompress_set_enveloped};
 pub use traits::IdSetCompressor;
 
 /// Compression method selection.
@@ -70,6 +82,8 @@ pub enum IdCompressionMethod {
     None,
     /// Elias-Fano encoding (baseline, sorted sequences).
     EliasFano,
+    /// Partitioned Elias–Fano (cluster-aware monotone sequences).
+    PartitionedEliasFano,
     /// Random Order Coding (optimal for sets, uses bits-back with ANS).
     Roc,
     /// Wavelet tree (full random access, future).

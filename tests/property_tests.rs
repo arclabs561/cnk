@@ -225,6 +225,21 @@ proptest! {
         prop_assert_eq!(ids, decompressed, "Elias-Fano roundtrip must preserve data");
     }
 
+    #[cfg(feature = "sbits")]
+    #[test]
+    fn partitioned_elias_fano_roundtrip_random_sets((ids, universe) in sorted_unique_ids(100, 10000)) {
+        let compressor = cnk::PartitionedEliasFanoCompressor::with_block_size(32);
+
+        let compressed = compressor
+            .compress_set(&ids, universe)
+            .expect("compression should succeed for valid input");
+        let decompressed = compressor
+            .decompress_set(&compressed, universe)
+            .expect("decompression should succeed for valid compressed data");
+
+        prop_assert_eq!(ids, decompressed, "Partitioned EF roundtrip must preserve data");
+    }
+
     // =======================================================================
     // VARINT EDGE CASES
     // =======================================================================
