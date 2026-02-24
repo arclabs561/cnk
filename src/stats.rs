@@ -108,4 +108,3 @@ mod tests {
         assert!(s.frac_small_gaps > 0.99);
     }
 }
-

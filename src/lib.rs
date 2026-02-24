@@ -47,31 +47,31 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 
+mod auto;
+mod choose;
 #[cfg(feature = "sbits")]
 mod elias_fano;
+mod envelope;
+mod error;
 #[cfg(feature = "sbits")]
 mod partitioned_elias_fano;
-mod error;
 mod roc;
 mod stats;
-mod choose;
-mod auto;
-mod envelope;
 mod traits;
 
 #[cfg(feature = "ans")]
 mod ans;
 
+pub use auto::{compress_set_auto, decompress_set_auto, AutoConfig};
+pub use choose::{choose_method, ChooseConfig, CodecChoice};
 #[cfg(feature = "sbits")]
 pub use elias_fano::EliasFanoCompressor;
+pub use envelope::{compress_set_enveloped, decompress_set_enveloped};
+pub use error::CompressionError;
 #[cfg(feature = "sbits")]
 pub use partitioned_elias_fano::PartitionedEliasFanoCompressor;
-pub use error::CompressionError;
 pub use roc::RocCompressor;
 pub use stats::IdListStats;
-pub use choose::{choose_method, ChooseConfig, CodecChoice};
-pub use auto::{compress_set_auto, decompress_set_auto, AutoConfig};
-pub use envelope::{compress_set_enveloped, decompress_set_enveloped};
 pub use traits::IdSetCompressor;
 
 /// Compression method selection.

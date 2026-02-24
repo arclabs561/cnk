@@ -114,8 +114,14 @@ pub fn choose_method(stats: &IdListStats, cfg: ChooseConfig) -> CodecChoice {
 }
 
 #[cfg(feature = "sbits")]
-fn update_best(best: &mut CodecChoice, best_bytes: &mut usize, cand: CodecChoice, cand_bytes: usize) {
-    if cand_bytes < *best_bytes || (cand_bytes == *best_bytes && choice_rank(&cand) < choice_rank(best))
+fn update_best(
+    best: &mut CodecChoice,
+    best_bytes: &mut usize,
+    cand: CodecChoice,
+    cand_bytes: usize,
+) {
+    if cand_bytes < *best_bytes
+        || (cand_bytes == *best_bytes && choice_rank(&cand) < choice_rank(best))
     {
         *best = cand;
         *best_bytes = cand_bytes;
@@ -139,7 +145,9 @@ fn choice_rank(c: &CodecChoice) -> (u8, usize) {
 fn estimate_choice_bytes(choice: &CodecChoice, stats: &IdListStats) -> usize {
     match choice.method {
         IdCompressionMethod::None => 0,
-        IdCompressionMethod::Roc => RocCompressor::new().estimate_size(stats.n, stats.universe_size),
+        IdCompressionMethod::Roc => {
+            RocCompressor::new().estimate_size(stats.n, stats.universe_size)
+        }
         #[cfg(feature = "sbits")]
         IdCompressionMethod::EliasFano => estimate_elias_fano_bytes(stats.n, stats.universe_size),
         #[cfg(feature = "sbits")]
@@ -236,9 +244,7 @@ fn estimate_partitioned_elias_fano_bytes(stats: &IdListStats, block_size: usize)
     };
 
     let est_large_gaps = ((1.0 - f) * gaps).round();
-    let clusters = (est_large_gaps as usize)
-        .saturating_add(1)
-        .clamp(1, n);
+    let clusters = (est_large_gaps as usize).saturating_add(1).clamp(1, n);
     let cluster_size = n.div_ceil(clusters).max(1);
 
     let global_span: u64 = (stats.max_id as u64)
@@ -272,10 +278,8 @@ fn estimate_partitioned_elias_fano_bytes(stats: &IdListStats, block_size: usize)
         let mut u_block = (span_est.ceil() as u64).saturating_add(1);
         u_block = u_block.clamp(block_n as u64, global_span);
 
-        total_payload = total_payload.saturating_add(bits_to_bytes(ef_total_bits(
-            block_n as u64,
-            u_block,
-        )));
+        total_payload =
+            total_payload.saturating_add(bits_to_bytes(ef_total_bits(block_n as u64, u_block)));
     }
 
     // Add small overhead for block descriptors / minima. Keep it conservative.
@@ -313,4 +317,3 @@ mod tests {
         assert!(choice.partition_block_size > 0);
     }
 }
-

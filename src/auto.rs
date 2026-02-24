@@ -53,12 +53,16 @@ pub fn compress_set_auto(
         IdCompressionMethod::None => Vec::new(),
         IdCompressionMethod::Roc => RocCompressor::new().compress_set(ids, universe_size)?,
         #[cfg(feature = "sbits")]
-        IdCompressionMethod::EliasFano => crate::EliasFanoCompressor::new().compress_set(ids, universe_size)?,
+        IdCompressionMethod::EliasFano => {
+            crate::EliasFanoCompressor::new().compress_set(ids, universe_size)?
+        }
         #[cfg(feature = "sbits")]
-        IdCompressionMethod::PartitionedEliasFano => crate::PartitionedEliasFanoCompressor::with_block_size(
-            choice.partition_block_size.max(1),
-        )
-        .compress_set(ids, universe_size)?,
+        IdCompressionMethod::PartitionedEliasFano => {
+            crate::PartitionedEliasFanoCompressor::with_block_size(
+                choice.partition_block_size.max(1),
+            )
+            .compress_set(ids, universe_size)?
+        }
         _ => {
             return Err(CompressionError::CompressionFailed(
                 "unsupported compression method in this build".to_string(),
@@ -84,8 +88,9 @@ pub fn decompress_set_auto(
             crate::EliasFanoCompressor::new().decompress_set(compressed, universe_size)
         }
         #[cfg(feature = "sbits")]
-        IdCompressionMethod::PartitionedEliasFano => crate::PartitionedEliasFanoCompressor::new()
-            .decompress_set(compressed, universe_size),
+        IdCompressionMethod::PartitionedEliasFano => {
+            crate::PartitionedEliasFanoCompressor::new().decompress_set(compressed, universe_size)
+        }
         _ => Err(CompressionError::DecompressionFailed(
             "unsupported compression method in this build".to_string(),
         )),
@@ -105,4 +110,3 @@ mod tests {
         assert_eq!(ids, back);
     }
 }
-

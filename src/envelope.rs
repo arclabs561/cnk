@@ -40,7 +40,7 @@
 //! - `crc` is IEEE CRC32 over the payload bytes.
 
 use crate::choose::CodecChoice;
-use crate::{compress_set_auto, CompressionError, IdCompressionMethod, AutoConfig};
+use crate::{compress_set_auto, AutoConfig, CompressionError, IdCompressionMethod};
 
 const MAGIC_V1: &[u8; 8] = b"CNKENV01";
 const MAGIC_V2: &[u8; 8] = b"CNKENV02";
@@ -234,7 +234,8 @@ pub fn decompress_set_enveloped(
     bytes: &[u8],
 ) -> Result<(CodecChoice, u32, Vec<u32>), CompressionError> {
     let parsed = parse_envelope(bytes)?;
-    let ids = crate::decompress_set_auto(parsed.choice.clone(), parsed.payload, parsed.universe_size)?;
+    let ids =
+        crate::decompress_set_auto(parsed.choice.clone(), parsed.payload, parsed.universe_size)?;
     if let Some(n) = parsed.n {
         if ids.len() != n as usize {
             return Err(CompressionError::DecompressionFailed(
@@ -273,20 +274,13 @@ mod tests {
         // CRC32(payload=[1,2,3]) = 0x55bc801d, little-endian bytes: 1d 80 bc 55.
         let expected: Vec<u8> = vec![
             // MAGIC_V2
-            b'C', b'N', b'K', b'E', b'N', b'V', b'0', b'2',
-            // tag = Roc
-            1,
-            // pbs = 0
-            0, 0, 0, 0,
-            // u = 123
-            0x7b, 0, 0, 0,
-            // n = 7
-            7, 0, 0, 0,
-            // len = 3 (u64 LE)
-            3, 0, 0, 0, 0, 0, 0, 0,
-            // crc = 0x55bc801d (u32 LE)
-            0x1d, 0x80, 0xbc, 0x55,
-            // payload
+            b'C', b'N', b'K', b'E', b'N', b'V', b'0', b'2', // tag = Roc
+            1, // pbs = 0
+            0, 0, 0, 0, // u = 123
+            0x7b, 0, 0, 0, // n = 7
+            7, 0, 0, 0, // len = 3 (u64 LE)
+            3, 0, 0, 0, 0, 0, 0, 0, // crc = 0x55bc801d (u32 LE)
+            0x1d, 0x80, 0xbc, 0x55, // payload
             1, 2, 3,
         ];
         assert_eq!(got, expected);
@@ -325,4 +319,3 @@ mod tests {
         assert_eq!(back, ids);
     }
 }
-

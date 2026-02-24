@@ -20,15 +20,21 @@ fn bench_compress(c: &mut Criterion) {
         #[cfg(feature = "sbits")]
         {
             let ef = cnk::EliasFanoCompressor::new();
-            group.bench_with_input(BenchmarkId::new("elias_fano", num_ids), &num_ids, |bench, _| {
-                bench.iter(|| ef.compress_set(black_box(&ids), black_box(universe_size)))
-            });
+            group.bench_with_input(
+                BenchmarkId::new("elias_fano", num_ids),
+                &num_ids,
+                |bench, _| {
+                    bench.iter(|| ef.compress_set(black_box(&ids), black_box(universe_size)))
+                },
+            );
 
             let pef = cnk::PartitionedEliasFanoCompressor::with_block_size(128);
             group.bench_with_input(
                 BenchmarkId::new("partitioned_elias_fano", num_ids),
                 &num_ids,
-                |bench, _| bench.iter(|| pef.compress_set(black_box(&ids), black_box(universe_size))),
+                |bench, _| {
+                    bench.iter(|| pef.compress_set(black_box(&ids), black_box(universe_size)))
+                },
             );
         }
     }
@@ -57,16 +63,24 @@ fn bench_decompress(c: &mut Criterion) {
         {
             let ef = cnk::EliasFanoCompressor::new();
             let ef_bytes = ef.compress_set(&ids, universe_size).unwrap();
-            group.bench_with_input(BenchmarkId::new("elias_fano", num_ids), &num_ids, |bench, _| {
-                bench.iter(|| ef.decompress_set(black_box(&ef_bytes), black_box(universe_size)))
-            });
+            group.bench_with_input(
+                BenchmarkId::new("elias_fano", num_ids),
+                &num_ids,
+                |bench, _| {
+                    bench.iter(|| ef.decompress_set(black_box(&ef_bytes), black_box(universe_size)))
+                },
+            );
 
             let pef = cnk::PartitionedEliasFanoCompressor::with_block_size(128);
             let pef_bytes = pef.compress_set(&ids, universe_size).unwrap();
             group.bench_with_input(
                 BenchmarkId::new("partitioned_elias_fano", num_ids),
                 &num_ids,
-                |bench, _| bench.iter(|| pef.decompress_set(black_box(&pef_bytes), black_box(universe_size))),
+                |bench, _| {
+                    bench.iter(|| {
+                        pef.decompress_set(black_box(&pef_bytes), black_box(universe_size))
+                    })
+                },
             );
         }
     }
@@ -98,12 +112,19 @@ fn bench_round_trip(c: &mut Criterion) {
         #[cfg(feature = "sbits")]
         {
             let ef = cnk::EliasFanoCompressor::new();
-            group.bench_with_input(BenchmarkId::new("elias_fano", num_ids), &num_ids, |bench, _| {
-                bench.iter(|| {
-                    let bytes = ef.compress_set(black_box(&ids), black_box(universe_size)).unwrap();
-                    ef.decompress_set(black_box(&bytes), black_box(universe_size)).unwrap()
-                })
-            });
+            group.bench_with_input(
+                BenchmarkId::new("elias_fano", num_ids),
+                &num_ids,
+                |bench, _| {
+                    bench.iter(|| {
+                        let bytes = ef
+                            .compress_set(black_box(&ids), black_box(universe_size))
+                            .unwrap();
+                        ef.decompress_set(black_box(&bytes), black_box(universe_size))
+                            .unwrap()
+                    })
+                },
+            );
 
             let pef = cnk::PartitionedEliasFanoCompressor::with_block_size(128);
             group.bench_with_input(
@@ -111,8 +132,11 @@ fn bench_round_trip(c: &mut Criterion) {
                 &num_ids,
                 |bench, _| {
                     bench.iter(|| {
-                        let bytes = pef.compress_set(black_box(&ids), black_box(universe_size)).unwrap();
-                        pef.decompress_set(black_box(&bytes), black_box(universe_size)).unwrap()
+                        let bytes = pef
+                            .compress_set(black_box(&ids), black_box(universe_size))
+                            .unwrap();
+                        pef.decompress_set(black_box(&bytes), black_box(universe_size))
+                            .unwrap()
                     })
                 },
             );

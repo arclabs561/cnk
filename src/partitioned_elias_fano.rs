@@ -78,7 +78,9 @@ impl IdSetCompressor for PartitionedEliasFanoCompressor {
         }
 
         let pef = sbits::PartitionedEliasFano::from_bytes(compressed).map_err(|e| {
-            CompressionError::DecompressionFailed(format!("PartitionedEliasFano decode failed: {e}"))
+            CompressionError::DecompressionFailed(format!(
+                "PartitionedEliasFano decode failed: {e}"
+            ))
         })?;
 
         if pef.universe_size() != universe_size {
@@ -118,4 +120,3 @@ impl IdSetCompressor for PartitionedEliasFanoCompressor {
         (self.estimate_size(num_ids, universe_size) as f64 * 8.0) / (num_ids as f64)
     }
 }
-
