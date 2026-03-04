@@ -1,5 +1,9 @@
 # cnk
 
+[![crates.io](https://img.shields.io/crates/v/cnk.svg)](https://crates.io/crates/cnk)
+[![Documentation](https://docs.rs/cnk/badge.svg)](https://docs.rs/cnk)
+[![CI](https://github.com/arclabs561/cnk/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/cnk/actions/workflows/ci.yml)
+
 Set compression via C(n,k): ROC, ANS, delta encoding.
 
 Dual-licensed under MIT or Apache-2.0.
