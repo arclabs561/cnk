@@ -275,7 +275,7 @@ mod tests {
         let expected: Vec<u8> = vec![
             // MAGIC_V2
             b'C', b'N', b'K', b'E', b'N', b'V', b'0', b'2', // tag = Roc
-            1, // pbs = 0
+            1,    // pbs = 0
             0, 0, 0, 0, // u = 123
             0x7b, 0, 0, 0, // n = 7
             7, 0, 0, 0, // len = 3 (u64 LE)
