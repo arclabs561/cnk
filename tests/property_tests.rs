@@ -315,6 +315,45 @@ proptest! {
         prop_assert!(compressed.len() <= raw_size + 10,
             "compressed {} bytes > raw {} bytes + margin", compressed.len(), raw_size);
     }
+
+    // =======================================================================
+    // BITS_PER_ID CORRELATION: estimate correlates with actual compressed size
+    // =======================================================================
+
+    #[test]
+    fn prop_bits_per_id_correlates_with_actual_size(
+        ids in prop::collection::vec(0u32..100_000, 20..500),
+        universe_size_offset in 1u32..100_000,
+    ) {
+        let compressor = RocCompressor::new();
+        let mut ids = ids;
+        ids.sort_unstable();
+        ids.dedup();
+        if ids.len() < 10 { return Ok(()); }
+        let max_id = *ids.last().unwrap();
+        let universe_size = max_id.saturating_add(universe_size_offset).saturating_add(1);
+
+        let compressed = compressor.compress_set(&ids, universe_size)?;
+        let actual_bits = compressed.len() as f64 * 8.0;
+        let estimated_bits = compressor.bits_per_id(ids.len(), universe_size) * ids.len() as f64;
+
+        // bits_per_id is a theoretical lower bound (Stirling approx of log2 C(N,n)/n).
+        // The actual compressed size (delta+varint) should not be astronomically larger.
+        // Allow 10x slack: the estimate is information-theoretic, the codec is practical.
+        prop_assert!(
+            actual_bits <= estimated_bits * 10.0 + 128.0,
+            "actual {} bits vastly exceeds 10x estimated {} bits for {} IDs in universe {}",
+            actual_bits, estimated_bits, ids.len(), universe_size
+        );
+        // The estimate should not exceed the actual size by too much either
+        // (it is a lower bound, so it should be <= actual, but allow some slack for
+        // very small sets where varint overhead dominates).
+        prop_assert!(
+            estimated_bits <= actual_bits + 128.0,
+            "estimated {} bits exceeds actual {} bits + margin for {} IDs in universe {}",
+            estimated_bits, actual_bits, ids.len(), universe_size
+        );
+    }
 }
 
 // =======================================================================

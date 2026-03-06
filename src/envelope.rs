@@ -119,6 +119,28 @@ struct ParsedEnvelope<'a> {
     payload: &'a [u8],
 }
 
+fn read_u32_le(bytes: &[u8], off: usize) -> Result<u32, CompressionError> {
+    let slice = bytes
+        .get(off..off + 4)
+        .ok_or_else(|| CompressionError::DecompressionFailed("envelope header truncated".into()))?;
+    Ok(u32::from_le_bytes(
+        slice
+            .try_into()
+            .map_err(|_| CompressionError::DecompressionFailed("envelope header truncated".into()))?,
+    ))
+}
+
+fn read_u64_le(bytes: &[u8], off: usize) -> Result<u64, CompressionError> {
+    let slice = bytes
+        .get(off..off + 8)
+        .ok_or_else(|| CompressionError::DecompressionFailed("envelope header truncated".into()))?;
+    Ok(u64::from_le_bytes(
+        slice
+            .try_into()
+            .map_err(|_| CompressionError::DecompressionFailed("envelope header truncated".into()))?,
+    ))
+}
+
 fn parse_envelope(bytes: &[u8]) -> Result<ParsedEnvelope<'_>, CompressionError> {
     // V2
     const V2_HDR: usize = 8 + 1 + 4 + 4 + 4 + 8 + 4;
@@ -126,15 +148,15 @@ fn parse_envelope(bytes: &[u8]) -> Result<ParsedEnvelope<'_>, CompressionError> 
         let mut off = 8usize;
         let tag = bytes[off];
         off += 1;
-        let pbs = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap()) as usize;
+        let pbs = read_u32_le(bytes, off)? as usize;
         off += 4;
-        let universe_size = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap());
+        let universe_size = read_u32_le(bytes, off)?;
         off += 4;
-        let n = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap());
+        let n = read_u32_le(bytes, off)?;
         off += 4;
-        let payload_len = u64::from_le_bytes(bytes[off..off + 8].try_into().unwrap()) as usize;
+        let payload_len = read_u64_le(bytes, off)? as usize;
         off += 8;
-        let expected_crc = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap());
+        let expected_crc = read_u32_le(bytes, off)?;
         off += 4;
         if off + payload_len != bytes.len() {
             return Err(CompressionError::DecompressionFailed(
@@ -173,11 +195,11 @@ fn parse_envelope(bytes: &[u8]) -> Result<ParsedEnvelope<'_>, CompressionError> 
         let mut off = 8usize;
         let tag = bytes[off];
         off += 1;
-        let pbs = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap()) as usize;
+        let pbs = read_u32_le(bytes, off)? as usize;
         off += 4;
-        let universe_size = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap());
+        let universe_size = read_u32_le(bytes, off)?;
         off += 4;
-        let payload_len = u64::from_le_bytes(bytes[off..off + 8].try_into().unwrap()) as usize;
+        let payload_len = read_u64_le(bytes, off)? as usize;
         off += 8;
         if off + payload_len != bytes.len() {
             return Err(CompressionError::DecompressionFailed(

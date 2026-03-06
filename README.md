@@ -24,6 +24,14 @@ assert_eq!(ids, decompressed);
 A set of size \(n\) from universe \([N]\) has $\binom{N}{n}$ possibilities, so the information-theoretic minimum is $\log_2 \binom{N}{n}$ bits.
 ROC approaches this bound by treating permutation as a latent variable.
 
+## Feature matrix
+
+| Compressor                       | Feature required | Random access |
+|----------------------------------|------------------|---------------|
+| `RocCompressor`                  | (always available) | no          |
+| `EliasFanoCompressor`            | `sbits`          | yes           |
+| `PartitionedEliasFanoCompressor` | `sbits`          | yes           |
+
 ## Succinct baselines (feature `sbits`)
 
 If you enable feature `sbits`, `cnk` exposes succinct monotone-sequence codecs powered by `sbits/`:

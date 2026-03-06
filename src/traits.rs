@@ -34,7 +34,12 @@ pub trait IdSetCompressor {
     ///
     /// # Errors
     ///
-    /// Returns `CompressionError` if input is invalid or compression fails.
+    /// Returns [`CompressionError::InvalidInput`] if `ids` is not sorted in
+    /// strictly ascending order (i.e. not unique) or contains values
+    /// `>= universe_size`.
+    ///
+    /// Returns [`CompressionError::CompressionFailed`] if the codec encounters
+    /// an internal encoding failure.
     fn compress_set(&self, ids: &[u32], universe_size: u32) -> Result<Vec<u8>, CompressionError>;
 
     /// Decompress a set of IDs.
@@ -50,7 +55,9 @@ pub trait IdSetCompressor {
     ///
     /// # Errors
     ///
-    /// Returns `CompressionError` if decompression fails.
+    /// Returns [`CompressionError::DecompressionFailed`] if the compressed
+    /// data is malformed, truncated, contains trailing bytes, or produces
+    /// IDs `>= universe_size`.
     fn decompress_set(
         &self,
         compressed: &[u8],
@@ -85,6 +92,11 @@ pub trait IdSetCompressor {
 }
 
 /// Validate that `ids` is sorted in strictly ascending order (sorted + unique).
+///
+/// Uniqueness is required because set compressors encode *sets*, not multisets:
+/// the compressed representation assumes each ID appears exactly once, and
+/// duplicate or out-of-order elements would silently corrupt the delta encoding
+/// (producing zero or negative gaps that cannot round-trip).
 ///
 /// Returns `Ok(())` for empty slices.
 pub fn validate_ids(ids: &[u32]) -> Result<(), CompressionError> {
