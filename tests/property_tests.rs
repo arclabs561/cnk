@@ -270,6 +270,53 @@ proptest! {
     }
 }
 
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(200))]
+
+    // =======================================================================
+    // ADDITIONAL ROUNDTRIP: large universe, sorted+deduped input
+    // =======================================================================
+
+    #[test]
+    fn prop_roc_roundtrip_deduped(
+        ids in prop::collection::vec(0u32..10_000, 0..500),
+        universe_size in 10_001u32..100_000,
+    ) {
+        let compressor = RocCompressor::new();
+        let mut ids = ids;
+        ids.sort_unstable();
+        ids.dedup();
+
+        let compressed = compressor.compress_set(&ids, universe_size)?;
+        let decompressed = compressor.decompress_set(&compressed, universe_size)?;
+        prop_assert_eq!(&ids, &decompressed);
+    }
+
+    // =======================================================================
+    // COMPRESSION RATIO: delta encoding beats raw u32 for non-trivial sets
+    // =======================================================================
+
+    #[test]
+    fn prop_compression_ratio(
+        ids in prop::collection::vec(0u32..100_000, 100..1000),
+        universe_size_offset in 1u32..100_000,
+    ) {
+        let compressor = RocCompressor::new();
+        let mut ids = ids;
+        ids.sort_unstable();
+        ids.dedup();
+        if ids.is_empty() { return Ok(()); }
+        let max_id = *ids.last().unwrap();
+        let universe_size = max_id.saturating_add(universe_size_offset).saturating_add(1);
+
+        let compressed = compressor.compress_set(&ids, universe_size)?;
+        let raw_size = ids.len() * 4;
+        // Delta encoding should always beat raw u32 storage for sorted sets
+        prop_assert!(compressed.len() <= raw_size + 10,
+            "compressed {} bytes > raw {} bytes + margin", compressed.len(), raw_size);
+    }
+}
+
 // =======================================================================
 // STATISTICAL TESTS (not proptest, but important)
 // =======================================================================

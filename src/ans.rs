@@ -6,12 +6,12 @@
 //! `cnk::ans::*` without directly depending on `ans`.
 
 #[allow(unused_imports)] // public re-export surface for callers
-pub use ans::{decode, encode, AnsError, FrequencyTable};
+pub use ans::{decode, encode, AnsError, FrequencyTable, RansDecoder, RansEncoder};
 
 use crate::CompressionError;
 
 impl From<AnsError> for CompressionError {
     fn from(e: AnsError) -> Self {
-        CompressionError::CompressionFailed(format!("ans: {e}"))
+        CompressionError::AnsError(format!("{e}"))
     }
 }

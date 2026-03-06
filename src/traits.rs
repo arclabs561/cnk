@@ -83,3 +83,22 @@ pub trait IdSetCompressor {
     /// Average bits per ID (theoretical lower bound).
     fn bits_per_id(&self, num_ids: usize, universe_size: u32) -> f64;
 }
+
+/// Validate that `ids` is sorted in strictly ascending order (sorted + unique).
+///
+/// Returns `Ok(())` for empty slices.
+pub fn validate_ids(ids: &[u32]) -> Result<(), CompressionError> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    for i in 1..ids.len() {
+        if ids[i] <= ids[i - 1] {
+            return Err(CompressionError::InvalidInput(format!(
+                "IDs must be sorted and unique, found {} <= {}",
+                ids[i],
+                ids[i - 1]
+            )));
+        }
+    }
+    Ok(())
+}

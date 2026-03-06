@@ -5,23 +5,19 @@ use crate::stats::IdListStats;
 use crate::{CompressionError, IdCompressionMethod, IdSetCompressor, RocCompressor};
 
 /// Configuration for `compress_set_auto`.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct AutoConfig {
     /// Heuristic chooser configuration.
     pub choose: ChooseConfig,
 }
 
-impl Default for AutoConfig {
-    fn default() -> Self {
-        Self {
-            choose: ChooseConfig::default(),
-        }
-    }
-}
-
 /// Choose a method (feature-aware) and compress.
 ///
 /// Returns the chosen method so callers can record it alongside the bytes.
+///
+/// # Errors
+///
+/// Returns `CompressionError` if input is invalid or compression fails.
 pub fn compress_set_auto(
     ids: &[u32],
     universe_size: u32,
@@ -75,6 +71,10 @@ pub fn compress_set_auto(
 
 /// Decompress bytes previously produced by `compress_set_auto` (or any compatible encoder),
 /// using the recorded `choice.method`.
+///
+/// # Errors
+///
+/// Returns `CompressionError` if decompression fails.
 pub fn decompress_set_auto(
     choice: CodecChoice,
     compressed: &[u8],
@@ -108,5 +108,26 @@ mod tests {
         let (choice, bytes) = compress_set_auto(&ids, u, AutoConfig::default()).unwrap();
         let back = decompress_set_auto(choice, &bytes, u).unwrap();
         assert_eq!(ids, back);
+    }
+
+    #[test]
+    fn auto_compress_decompress_consecutive() {
+        let ids: Vec<u32> = (0..100).collect();
+        let universe_size = 1000;
+        let (choice, compressed) =
+            compress_set_auto(&ids, universe_size, AutoConfig::default()).unwrap();
+        let decompressed = decompress_set_auto(choice, &compressed, universe_size).unwrap();
+        assert_eq!(ids, decompressed);
+    }
+
+    #[test]
+    fn auto_empty_set() {
+        let ids: Vec<u32> = vec![];
+        let universe_size = 1000;
+        let (choice, compressed) =
+            compress_set_auto(&ids, universe_size, AutoConfig::default()).unwrap();
+        assert!(compressed.is_empty());
+        let decompressed = decompress_set_auto(choice, &compressed, universe_size).unwrap();
+        assert!(decompressed.is_empty());
     }
 }

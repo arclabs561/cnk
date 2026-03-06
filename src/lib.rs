@@ -9,8 +9,10 @@
 //!
 //! # Compression Methods
 //!
-//! - **Delta encoding**: Simple baseline, varint-encodes gaps between IDs
-//! - **ROC (Random Order Coding)**: Near-optimal for sets using bits-back with ANS
+//! - **Delta+varint** (`RocCompressor`): practical baseline, varint-encodes gaps between sorted IDs
+//! - **Elias-Fano** (feature `sbits`): succinct monotone-sequence codec with random access
+//! - **Partitioned Elias-Fano** (feature `sbits`): cluster-aware variant
+//! - **ROC (Random Order Coding)**: near-optimal for sets using bits-back with ANS (planned)
 //!
 //! # Historical Context
 //!
@@ -60,7 +62,7 @@ mod stats;
 mod traits;
 
 #[cfg(feature = "ans")]
-mod ans;
+pub mod ans;
 
 pub use auto::{compress_set_auto, decompress_set_auto, AutoConfig};
 pub use choose::{choose_method, ChooseConfig, CodecChoice};
@@ -72,7 +74,7 @@ pub use error::CompressionError;
 pub use partitioned_elias_fano::PartitionedEliasFanoCompressor;
 pub use roc::RocCompressor;
 pub use stats::IdListStats;
-pub use traits::IdSetCompressor;
+pub use traits::{validate_ids, IdSetCompressor};
 
 /// Compression method selection.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

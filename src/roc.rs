@@ -15,10 +15,11 @@
 use crate::error::CompressionError;
 use crate::traits::IdSetCompressor;
 
-/// Random Order Coding compressor for sets.
+/// Delta+varint compressor for sorted, unique ID sets.
 ///
-/// Compresses sets of IDs using delta encoding with varint.
-/// For large sets, approaches the theoretical minimum of `log2(C(N,n))` bits.
+/// Despite the name, this is not yet true Random Order Coding (bits-back ANS).
+/// It uses delta encoding with varint, which is a practical baseline. True ROC
+/// requires the streaming ANS API (`RansEncoder`/`RansDecoder`) and is planned.
 ///
 /// # Performance
 ///
@@ -33,6 +34,7 @@ pub struct RocCompressor {
 
 impl RocCompressor {
     /// Create a new ROC compressor with default precision.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             ans_precision: 1 << 12, // 4096, good balance
@@ -44,30 +46,13 @@ impl RocCompressor {
     /// # Arguments
     ///
     /// * `precision` - ANS quantization precision (must be power of 2)
+    #[must_use]
     pub fn with_precision(precision: u32) -> Self {
         Self {
             ans_precision: precision,
         }
     }
 
-    /// Validate that IDs are sorted and unique.
-    fn validate_ids(ids: &[u32]) -> Result<(), CompressionError> {
-        if ids.is_empty() {
-            return Ok(());
-        }
-
-        for i in 1..ids.len() {
-            if ids[i] <= ids[i - 1] {
-                return Err(CompressionError::InvalidInput(format!(
-                    "IDs must be sorted and unique, found {} <= {}",
-                    ids[i],
-                    ids[i - 1]
-                )));
-            }
-        }
-
-        Ok(())
-    }
 
     /// Calculate theoretical bits for a set.
     ///
@@ -139,7 +124,7 @@ impl RocCompressor {
 
 impl IdSetCompressor for RocCompressor {
     fn compress_set(&self, ids: &[u32], universe_size: u32) -> Result<Vec<u8>, CompressionError> {
-        Self::validate_ids(ids)?;
+        crate::traits::validate_ids(ids)?;
 
         if ids.is_empty() {
             return Ok(Vec::new());
@@ -342,5 +327,29 @@ mod tests {
 
         let result = compressor.compress_set(&ids, 1000);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn sparse_single_id() {
+        let compressor = RocCompressor::new();
+        let ids = vec![999_999u32];
+        let universe_size = 1_000_000;
+        let compressed = compressor.compress_set(&ids, universe_size).unwrap();
+        let decompressed = compressor
+            .decompress_set(&compressed, universe_size)
+            .unwrap();
+        assert_eq!(ids, decompressed);
+    }
+
+    #[test]
+    fn dense_set() {
+        let compressor = RocCompressor::new();
+        let ids: Vec<u32> = (0..999).collect();
+        let universe_size = 1000;
+        let compressed = compressor.compress_set(&ids, universe_size).unwrap();
+        let decompressed = compressor
+            .decompress_set(&compressed, universe_size)
+            .unwrap();
+        assert_eq!(ids, decompressed);
     }
 }

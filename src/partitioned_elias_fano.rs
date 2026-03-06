@@ -28,21 +28,6 @@ impl PartitionedEliasFanoCompressor {
         }
     }
 
-    fn validate_ids(ids: &[u32]) -> Result<(), CompressionError> {
-        if ids.is_empty() {
-            return Ok(());
-        }
-        for i in 1..ids.len() {
-            if ids[i] <= ids[i - 1] {
-                return Err(CompressionError::InvalidInput(format!(
-                    "IDs must be sorted and unique, found {} <= {}",
-                    ids[i],
-                    ids[i - 1]
-                )));
-            }
-        }
-        Ok(())
-    }
 }
 
 impl Default for PartitionedEliasFanoCompressor {
@@ -53,7 +38,7 @@ impl Default for PartitionedEliasFanoCompressor {
 
 impl IdSetCompressor for PartitionedEliasFanoCompressor {
     fn compress_set(&self, ids: &[u32], universe_size: u32) -> Result<Vec<u8>, CompressionError> {
-        Self::validate_ids(ids)?;
+        crate::traits::validate_ids(ids)?;
 
         if let Some(&max_id) = ids.iter().max() {
             if max_id >= universe_size {

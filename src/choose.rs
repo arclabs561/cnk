@@ -59,6 +59,7 @@ pub fn choose_method(stats: &IdListStats, cfg: ChooseConfig) -> CodecChoice {
         #[cfg(not(feature = "sbits"))]
         {
             let _ = cfg;
+            #[allow(clippy::needless_return)]
             return CodecChoice {
                 method: IdCompressionMethod::Roc,
                 partition_block_size: 0,
@@ -108,7 +109,7 @@ pub fn choose_method(stats: &IdListStats, cfg: ChooseConfig) -> CodecChoice {
                 }
             }
 
-            return best;
+            best
         }
     }
 }

@@ -107,4 +107,26 @@ mod tests {
         assert_eq!(s.max_gap, 1);
         assert!(s.frac_small_gaps > 0.99);
     }
+
+    #[test]
+    fn id_list_stats_basic() {
+        let ids = vec![1u32, 5, 10, 20, 50];
+        let stats = IdListStats::from_sorted_unique(&ids, 1000);
+        assert_eq!(stats.n, 5);
+        assert!(stats.mean_gap > 0.0);
+        assert_eq!(stats.min_id, 1);
+        assert_eq!(stats.max_id, 50);
+        assert_eq!(stats.max_gap, 30); // 50 - 20
+    }
+
+    #[test]
+    fn stats_single_element() {
+        let ids = vec![42u32];
+        let stats = IdListStats::from_sorted_unique(&ids, 100);
+        assert_eq!(stats.n, 1);
+        assert_eq!(stats.min_id, 42);
+        assert_eq!(stats.max_id, 42);
+        assert_eq!(stats.mean_gap, 0.0);
+        assert_eq!(stats.max_gap, 0);
+    }
 }

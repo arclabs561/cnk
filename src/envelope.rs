@@ -209,6 +209,10 @@ fn parse_envelope(bytes: &[u8]) -> Result<ParsedEnvelope<'_>, CompressionError> 
 }
 
 /// Encode as an envelope: choose method (auto) + store `(method, params, universe_size, payload)`.
+///
+/// # Errors
+///
+/// Returns `CompressionError` if input is invalid or compression fails.
 pub fn compress_set_enveloped(
     ids: &[u32],
     universe_size: u32,
@@ -230,6 +234,10 @@ pub fn compress_set_enveloped(
 /// Decode an envelope.
 ///
 /// Returns `(choice, universe_size, ids)`.
+///
+/// # Errors
+///
+/// Returns `CompressionError` if the envelope is malformed, CRC fails, or decompression fails.
 pub fn decompress_set_enveloped(
     bytes: &[u8],
 ) -> Result<(CodecChoice, u32, Vec<u32>), CompressionError> {
@@ -305,6 +313,16 @@ mod tests {
             msg.to_ascii_lowercase().contains("crc"),
             "expected CRC error, got: {msg}"
         );
+    }
+
+    #[test]
+    fn envelope_roundtrip_small_set() {
+        let ids = vec![1u32, 5, 10, 20, 50, 100, 200, 500];
+        let u = 1000;
+        let bytes = compress_set_enveloped(&ids, u, AutoConfig::default()).unwrap();
+        let (_choice, u2, back) = decompress_set_enveloped(&bytes).unwrap();
+        assert_eq!(u2, u);
+        assert_eq!(back, ids);
     }
 
     #[test]

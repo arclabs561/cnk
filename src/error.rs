@@ -16,9 +16,6 @@ pub enum CompressionError {
 
     /// ANS encoding/decoding error.
     AnsError(String),
-
-    /// I/O error.
-    Io(String),
 }
 
 impl fmt::Display for CompressionError {
@@ -36,17 +33,8 @@ impl fmt::Display for CompressionError {
             CompressionError::AnsError(msg) => {
                 write!(f, "ANS encoding error: {}", msg)
             }
-            CompressionError::Io(msg) => {
-                write!(f, "I/O error: {}", msg)
-            }
         }
     }
 }
 
 impl std::error::Error for CompressionError {}
-
-impl From<std::io::Error> for CompressionError {
-    fn from(e: std::io::Error) -> Self {
-        Self::Io(e.to_string())
-    }
-}
