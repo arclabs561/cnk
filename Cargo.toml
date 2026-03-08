@@ -1,6 +1,6 @@
 [package]
 name = "cnk"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
 description = "ID set compression primitives (delta+varint, Elias-Fano; bits-back ROC planned)"
