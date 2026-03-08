@@ -123,22 +123,18 @@ fn read_u32_le(bytes: &[u8], off: usize) -> Result<u32, CompressionError> {
     let slice = bytes
         .get(off..off + 4)
         .ok_or_else(|| CompressionError::DecompressionFailed("envelope header truncated".into()))?;
-    Ok(u32::from_le_bytes(
-        slice
-            .try_into()
-            .map_err(|_| CompressionError::DecompressionFailed("envelope header truncated".into()))?,
-    ))
+    Ok(u32::from_le_bytes(slice.try_into().map_err(|_| {
+        CompressionError::DecompressionFailed("envelope header truncated".into())
+    })?))
 }
 
 fn read_u64_le(bytes: &[u8], off: usize) -> Result<u64, CompressionError> {
     let slice = bytes
         .get(off..off + 8)
         .ok_or_else(|| CompressionError::DecompressionFailed("envelope header truncated".into()))?;
-    Ok(u64::from_le_bytes(
-        slice
-            .try_into()
-            .map_err(|_| CompressionError::DecompressionFailed("envelope header truncated".into()))?,
-    ))
+    Ok(u64::from_le_bytes(slice.try_into().map_err(|_| {
+        CompressionError::DecompressionFailed("envelope header truncated".into())
+    })?))
 }
 
 fn parse_envelope(bytes: &[u8]) -> Result<ParsedEnvelope<'_>, CompressionError> {

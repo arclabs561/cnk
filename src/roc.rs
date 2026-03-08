@@ -53,7 +53,6 @@ impl RocCompressor {
         }
     }
 
-
     /// Calculate theoretical bits for a set.
     ///
     /// Uses Stirling's approximation: log(C(N, n)) ≈ n * log(N/n) + O(n)

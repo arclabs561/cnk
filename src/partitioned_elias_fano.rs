@@ -27,7 +27,6 @@ impl PartitionedEliasFanoCompressor {
             block_size: block_size.max(1),
         }
     }
-
 }
 
 impl Default for PartitionedEliasFanoCompressor {

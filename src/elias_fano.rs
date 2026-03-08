@@ -15,7 +15,6 @@ impl EliasFanoCompressor {
     pub fn new() -> Self {
         Self
     }
-
 }
 
 impl IdSetCompressor for EliasFanoCompressor {
