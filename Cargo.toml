@@ -28,6 +28,7 @@ path = "src/lib.rs"
 [dev-dependencies]
 proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
+postings = "0.1"
 
 [[bench]]
 name = "compression"
