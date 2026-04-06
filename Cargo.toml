@@ -9,6 +9,8 @@ repository = "https://github.com/arclabs561/cnk"
 keywords = ["compression", "entropy", "inverted-index"]
 categories = ["compression", "algorithms"]
 
+[workspace]
+
 [features]
 default = []
 # Enable foundational ANS entropy coding (internal module; API may change).
