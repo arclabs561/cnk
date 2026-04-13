@@ -10,13 +10,9 @@
 //! # Compression Methods
 //!
 //! - **Delta+varint** (`DeltaVarintCompressor`): practical baseline, varint-encodes gaps between sorted IDs
+//! - **ROC** (feature `ans`): near-optimal set compression via bits-back ANS, approaches log₂ C(N,n) bits
 //! - **Elias-Fano** (feature `sbits`): succinct monotone-sequence codec with random access
 //! - **Partitioned Elias-Fano** (feature `sbits`): cluster-aware variant
-//!
-//! # Historical Context
-//!
-//! Set compression has a rich history in information retrieval. Classic methods
-//! like Elias-Fano (1971) exploit monotonicity of sorted sequences.
 //!
 //! # Example
 //!
@@ -52,6 +48,8 @@ mod envelope;
 mod error;
 #[cfg(feature = "sbits")]
 mod partitioned_elias_fano;
+#[cfg(feature = "ans")]
+mod roc;
 mod stats;
 mod traits;
 
@@ -67,10 +65,16 @@ pub use envelope::{compress_set_enveloped, decompress_set_enveloped};
 pub use error::CompressionError;
 #[cfg(feature = "sbits")]
 pub use partitioned_elias_fano::PartitionedEliasFanoCompressor;
+#[cfg(feature = "ans")]
+pub use roc::RocCompressor;
 pub use stats::IdListStats;
 pub use traits::{validate_ids, IdSetCompressor};
 
 /// Deprecated alias for [`DeltaVarintCompressor`].
+///
+/// Note: when the `ans` feature is enabled, `cnk::RocCompressor` refers to
+/// the true ROC compressor (bits-back ANS), not this alias.
+#[cfg(not(feature = "ans"))]
 #[deprecated(since = "0.2.0", note = "renamed to DeltaVarintCompressor")]
 pub type RocCompressor = DeltaVarintCompressor;
 
@@ -86,4 +90,7 @@ pub enum IdCompressionMethod {
     PartitionedEliasFano,
     /// Delta+varint encoding (gap-coded sorted sequences).
     DeltaVarint,
+    /// ROC (bits-back ANS set coding), approaches log₂ C(N,n) bits.
+    #[cfg(feature = "ans")]
+    Roc,
 }
