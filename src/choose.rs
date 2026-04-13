@@ -137,6 +137,8 @@ fn choice_rank(c: &CodecChoice) -> (u8, usize) {
         IdCompressionMethod::DeltaVarint => 1,
         IdCompressionMethod::EliasFano => 2,
         IdCompressionMethod::PartitionedEliasFano => 3,
+        #[cfg(feature = "ans")]
+        IdCompressionMethod::Roc => 4,
     };
     (method_rank, c.partition_block_size)
 }
@@ -155,6 +157,10 @@ fn estimate_choice_bytes(choice: &CodecChoice, stats: &IdListStats) -> usize {
         #[cfg(feature = "sbits")]
         IdCompressionMethod::PartitionedEliasFano => {
             estimate_partitioned_elias_fano_bytes(stats, choice.partition_block_size.max(1))
+        }
+        #[cfg(feature = "ans")]
+        IdCompressionMethod::Roc => {
+            crate::RocCompressor::new().estimate_size(stats.n, stats.universe_size)
         }
     }
 }

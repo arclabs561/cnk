@@ -56,6 +56,7 @@ pub fn compress_set_auto(
         }
         #[cfg(feature = "ans")]
         IdCompressionMethod::Roc => crate::RocCompressor::new().compress_set(ids, universe_size)?,
+        #[allow(unreachable_patterns)]
         _ => {
             return Err(CompressionError::CompressionFailed(
                 "unsupported compression method in this build".to_string(),
@@ -94,6 +95,7 @@ pub fn decompress_set_auto(
         IdCompressionMethod::Roc => {
             crate::RocCompressor::new().decompress_set(compressed, universe_size)
         }
+        #[allow(unreachable_patterns)]
         _ => Err(CompressionError::DecompressionFailed(
             "unsupported compression method in this build".to_string(),
         )),
