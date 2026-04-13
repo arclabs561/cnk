@@ -85,6 +85,7 @@ fn normalize_choice(mut choice: CodecChoice) -> CodecChoice {
         IdCompressionMethod::PartitionedEliasFano => {
             choice.partition_block_size = choice.partition_block_size.max(1);
         }
+        #[allow(unreachable_patterns)]
         _ => {
             choice.partition_block_size = 0;
         }
