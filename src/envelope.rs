@@ -51,6 +51,8 @@ fn method_tag(m: &IdCompressionMethod) -> u8 {
         IdCompressionMethod::DeltaVarint => 1,
         IdCompressionMethod::EliasFano => 2,
         IdCompressionMethod::PartitionedEliasFano => 3,
+        #[cfg(feature = "ans")]
+        IdCompressionMethod::Roc => 4,
     }
 }
 
@@ -60,8 +62,11 @@ fn tag_method(tag: u8) -> Result<IdCompressionMethod, CompressionError> {
         1 => Ok(IdCompressionMethod::DeltaVarint),
         2 => Ok(IdCompressionMethod::EliasFano),
         3 => Ok(IdCompressionMethod::PartitionedEliasFano),
+        #[cfg(feature = "ans")]
+        4 => Ok(IdCompressionMethod::Roc),
+        #[cfg(not(feature = "ans"))]
         4 => Err(CompressionError::DecompressionFailed(
-            "reserved tag 4 (wavelet tree) is not supported".to_string(),
+            "ROC codec (tag 4) requires the 'ans' feature".to_string(),
         )),
         _ => Err(CompressionError::DecompressionFailed(format!(
             "unknown envelope method tag: {tag}"

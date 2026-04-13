@@ -54,7 +54,8 @@ pub fn compress_set_auto(
             )
             .compress_set(ids, universe_size)?
         }
-        #[cfg(not(feature = "sbits"))]
+        #[cfg(feature = "ans")]
+        IdCompressionMethod::Roc => crate::RocCompressor::new().compress_set(ids, universe_size)?,
         _ => {
             return Err(CompressionError::CompressionFailed(
                 "unsupported compression method in this build".to_string(),
@@ -89,7 +90,10 @@ pub fn decompress_set_auto(
         IdCompressionMethod::PartitionedEliasFano => {
             crate::PartitionedEliasFanoCompressor::new().decompress_set(compressed, universe_size)
         }
-        #[cfg(not(feature = "sbits"))]
+        #[cfg(feature = "ans")]
+        IdCompressionMethod::Roc => {
+            crate::RocCompressor::new().decompress_set(compressed, universe_size)
+        }
         _ => Err(CompressionError::DecompressionFailed(
             "unsupported compression method in this build".to_string(),
         )),
