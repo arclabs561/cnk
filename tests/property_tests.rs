@@ -3,7 +3,7 @@
 //! These tests verify mathematical invariants that must hold for all inputs,
 //! using proptest to generate random test cases.
 
-use cnk::{IdSetCompressor, RocCompressor};
+use cnk::{DeltaVarintCompressor, IdSetCompressor};
 use proptest::prelude::*;
 
 /// Generate a sorted, unique set of IDs within a universe.
@@ -52,7 +52,7 @@ proptest! {
 
     #[test]
     fn roundtrip_random_sets((ids, universe) in sorted_unique_ids(100, 10000)) {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
 
         let compressed = compressor.compress_set(&ids, universe)
             .expect("compression should succeed for valid input");
@@ -64,7 +64,7 @@ proptest! {
 
     #[test]
     fn roundtrip_sparse_sets((ids, universe) in sparse_ids(50)) {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
 
         let compressed = compressor.compress_set(&ids, universe)?;
         let decompressed = compressor.decompress_set(&compressed, universe)?;
@@ -74,7 +74,7 @@ proptest! {
 
     #[test]
     fn roundtrip_dense_sets((ids, universe) in dense_ids(100)) {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
 
         let compressed = compressor.compress_set(&ids, universe)?;
         let decompressed = compressor.decompress_set(&compressed, universe)?;
@@ -90,7 +90,7 @@ proptest! {
     fn compression_reduces_size_for_large_sets((ids, universe) in sorted_unique_ids(100, 100000)) {
         prop_assume!(!ids.is_empty());
 
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let compressed = compressor.compress_set(&ids, universe)?;
 
         let uncompressed_size = ids.len() * 4; // 4 bytes per u32
@@ -112,7 +112,7 @@ proptest! {
         let ids: Vec<u32> = (start..start + len as u32).collect();
         let universe = start + len as u32 + 1000;
 
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let compressed = compressor.compress_set(&ids, universe)?;
 
         // Consecutive IDs have delta=1, which is 1 byte per ID in varint
@@ -131,7 +131,7 @@ proptest! {
 
     #[test]
     fn empty_set_roundtrip(universe in 1u32..1000000) {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids: Vec<u32> = vec![];
 
         let compressed = compressor.compress_set(&ids, universe)?;
@@ -144,7 +144,7 @@ proptest! {
     #[test]
     fn single_id_roundtrip(id in 0u32..100000) {
         let universe = id + 1;
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![id];
 
         let compressed = compressor.compress_set(&ids, universe)?;
@@ -157,7 +157,7 @@ proptest! {
     fn two_ids_roundtrip((a, gap) in (0u32..10000, 1u32..10000)) {
         let b = a.saturating_add(gap);
         let universe = b + 1;
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![a, b];
 
         let compressed = compressor.compress_set(&ids, universe)?;
@@ -175,7 +175,7 @@ proptest! {
         (a, b) in (1u32..10000, 0u32..10000)
     ) {
         prop_assume!(a > b); // Ensure unsorted
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![a, b]; // Intentionally unsorted
 
         let result = compressor.compress_set(&ids, 100000);
@@ -190,7 +190,7 @@ proptest! {
         // Use a universe smaller than max_id
         let small_universe = max_id; // max_id is now out of bounds
 
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let result = compressor.compress_set(&ids, small_universe);
 
         prop_assert!(result.is_err(), "should reject IDs >= universe");
@@ -202,7 +202,7 @@ proptest! {
 
     #[test]
     fn compression_is_deterministic((ids, universe) in sorted_unique_ids(50, 10000)) {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
 
         let compressed1 = compressor.compress_set(&ids, universe)?;
         let compressed2 = compressor.compress_set(&ids, universe)?;
@@ -249,7 +249,7 @@ proptest! {
         let ids: Vec<u32> = (0..10).map(|i| start.saturating_add(i * 10)).collect();
         let universe = ids.last().unwrap() + 1;
 
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let compressed = compressor.compress_set(&ids, universe)?;
         let decompressed = compressor.decompress_set(&compressed, universe)?;
 
@@ -260,7 +260,7 @@ proptest! {
     fn handles_large_gaps((a, gap) in (0u32..1000, 1u32..u32::MAX / 2)) {
         let b = a.saturating_add(gap);
         let universe = b + 1;
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![a, b];
 
         let compressed = compressor.compress_set(&ids, universe)?;
@@ -278,11 +278,11 @@ proptest! {
     // =======================================================================
 
     #[test]
-    fn prop_roc_roundtrip_deduped(
+    fn prop_delta_varint_roundtrip_deduped(
         ids in prop::collection::vec(0u32..10_000, 0..500),
         universe_size in 10_001u32..100_000,
     ) {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let mut ids = ids;
         ids.sort_unstable();
         ids.dedup();
@@ -301,7 +301,7 @@ proptest! {
         ids in prop::collection::vec(0u32..100_000, 100..1000),
         universe_size_offset in 1u32..100_000,
     ) {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let mut ids = ids;
         ids.sort_unstable();
         ids.dedup();
@@ -321,11 +321,11 @@ proptest! {
     // =======================================================================
 
     #[test]
-    fn prop_bits_per_id_correlates_with_actual_size(
+    fn prop_estimate_correlates_with_actual_size(
         ids in prop::collection::vec(0u32..100_000, 20..500),
         universe_size_offset in 1u32..100_000,
     ) {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let mut ids = ids;
         ids.sort_unstable();
         ids.dedup();
@@ -334,24 +334,22 @@ proptest! {
         let universe_size = max_id.saturating_add(universe_size_offset).saturating_add(1);
 
         let compressed = compressor.compress_set(&ids, universe_size)?;
-        let actual_bits = compressed.len() as f64 * 8.0;
-        let estimated_bits = compressor.bits_per_id(ids.len(), universe_size) * ids.len() as f64;
+        let actual_bytes = compressed.len();
+        let estimated_bytes = compressor.estimate_size(ids.len(), universe_size);
 
-        // bits_per_id is a theoretical lower bound (Stirling approx of log2 C(N,n)/n).
-        // The actual compressed size (delta+varint) should not be astronomically larger.
-        // Allow 10x slack: the estimate is information-theoretic, the codec is practical.
+        // The estimate uses the mean-gap model (uniform distribution assumption).
+        // For clustered data, actual may be smaller (small gaps = 1-byte varints).
+        // For sparse data, actual may be larger (large gaps = multi-byte varints).
+        // Allow 3x in either direction -- the estimate is a planning tool, not exact.
         prop_assert!(
-            actual_bits <= estimated_bits * 10.0 + 128.0,
-            "actual {} bits vastly exceeds 10x estimated {} bits for {} IDs in universe {}",
-            actual_bits, estimated_bits, ids.len(), universe_size
+            actual_bytes <= estimated_bytes * 3 + 16,
+            "actual {} bytes vastly exceeds 3x estimated {} bytes for {} IDs in universe {}",
+            actual_bytes, estimated_bytes, ids.len(), universe_size
         );
-        // The estimate should not exceed the actual size by too much either
-        // (it is a lower bound, so it should be <= actual, but allow some slack for
-        // very small sets where varint overhead dominates).
         prop_assert!(
-            estimated_bits <= actual_bits + 128.0,
-            "estimated {} bits exceeds actual {} bits + margin for {} IDs in universe {}",
-            estimated_bits, actual_bits, ids.len(), universe_size
+            estimated_bytes <= actual_bytes * 3 + 16,
+            "estimated {} bytes vastly exceeds 3x actual {} bytes for {} IDs in universe {}",
+            estimated_bytes, actual_bytes, ids.len(), universe_size
         );
     }
 }
@@ -362,7 +360,7 @@ proptest! {
 
 #[test]
 fn compression_ratio_improves_with_density() {
-    let compressor = RocCompressor::new();
+    let compressor = DeltaVarintCompressor::new();
     let universe = 100_000u32;
 
     // Sparse set with large gaps (delta ~100)
@@ -398,11 +396,11 @@ fn compression_ratio_improves_with_density() {
 }
 
 #[test]
-fn estimate_size_is_reasonable() {
-    let compressor = RocCompressor::new();
+fn estimate_size_vs_actual() {
+    let compressor = DeltaVarintCompressor::new();
 
     for num_ids in [10, 100, 1000] {
-        for universe in [10_000, 100_000, 1_000_000] {
+        for universe in [10_000u32, 100_000, 1_000_000] {
             let estimate = compressor.estimate_size(num_ids, universe);
 
             // Estimate should be positive for non-empty sets
@@ -411,11 +409,110 @@ fn estimate_size_is_reasonable() {
             // Estimate should be less than raw storage
             let raw_size = num_ids * 4;
             assert!(
-                estimate <= raw_size * 2,
-                "estimate {} should be reasonable vs raw {}",
+                estimate <= raw_size,
+                "estimate {} should not exceed raw {} for {} ids in universe {}",
                 estimate,
-                raw_size
+                raw_size,
+                num_ids,
+                universe
+            );
+
+            // Compare against actual compression for uniform-ish data
+            let ids: Vec<u32> = (0..num_ids as u32)
+                .map(|i| i * (universe / num_ids as u32))
+                .collect();
+            let compressed = compressor.compress_set(&ids, universe).unwrap();
+            let actual = compressed.len();
+
+            // For uniformly-spaced IDs, estimate should be within 2x of actual
+            assert!(
+                estimate <= actual * 2 + 16,
+                "estimate {} too high vs actual {} for {} uniform ids in universe {}",
+                estimate,
+                actual,
+                num_ids,
+                universe
+            );
+            assert!(
+                actual <= estimate * 2 + 16,
+                "actual {} too high vs estimate {} for {} uniform ids in universe {}",
+                actual,
+                estimate,
+                num_ids,
+                universe
             );
         }
     }
+}
+
+// =======================================================================
+// ERROR PATH COVERAGE
+// =======================================================================
+
+#[test]
+fn decompress_truncated_data() {
+    let compressor = DeltaVarintCompressor::new();
+    let ids = vec![1u32, 5, 10, 20, 50];
+    let compressed = compressor.compress_set(&ids, 100).unwrap();
+
+    // Truncate to just the count byte
+    let truncated = &compressed[..1];
+    let result = compressor.decompress_set(truncated, 100);
+    assert!(result.is_err(), "truncated data should fail");
+}
+
+#[test]
+fn decompress_trailing_bytes() {
+    let compressor = DeltaVarintCompressor::new();
+    let ids = vec![1u32, 5, 10];
+    let mut compressed = compressor.compress_set(&ids, 100).unwrap();
+    compressed.push(0xFF); // trailing garbage
+
+    let result = compressor.decompress_set(&compressed, 100);
+    assert!(result.is_err(), "trailing bytes should fail");
+}
+
+#[test]
+fn decompress_num_ids_exceeds_universe() {
+    let compressor = DeltaVarintCompressor::new();
+    // Craft bytes: count=1000 (varint), but universe_size=10
+    // varint 1000 = 0xe8 0x07
+    let crafted = vec![0xe8, 0x07, 0x00]; // count=1000, first_id=0
+    let result = compressor.decompress_set(&crafted, 10);
+    assert!(result.is_err(), "num_ids exceeding universe should fail");
+}
+
+#[test]
+fn compress_universe_zero_empty_set() {
+    let compressor = DeltaVarintCompressor::new();
+    let result = compressor.compress_set(&[], 0);
+    assert!(result.is_ok(), "empty set with universe 0 should succeed");
+}
+
+#[test]
+fn compress_universe_zero_nonempty() {
+    let compressor = DeltaVarintCompressor::new();
+    let result = compressor.compress_set(&[0], 0);
+    assert!(result.is_err(), "non-empty set with universe 0 should fail");
+}
+
+#[test]
+fn envelope_truncated_header() {
+    let result = cnk::decompress_set_enveloped(b"CNK");
+    assert!(result.is_err(), "truncated envelope should fail");
+}
+
+#[test]
+fn envelope_bad_magic() {
+    let result = cnk::decompress_set_enveloped(b"BADMAGIC00000000000000000000000000");
+    assert!(result.is_err(), "bad magic should fail");
+}
+
+#[test]
+fn auto_roundtrip_no_sbits_fallback() {
+    // Test the auto path without sbits features -- should always use DeltaVarint
+    let ids: Vec<u32> = (0..100).collect();
+    let (choice, bytes) = cnk::compress_set_auto(&ids, 1000, cnk::ChooseConfig::default()).unwrap();
+    let back = cnk::decompress_set_auto(choice, &bytes, 1000).unwrap();
+    assert_eq!(ids, back);
 }

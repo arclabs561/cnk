@@ -1,11 +1,11 @@
 //! Compress postings lists with cnk.
 //!
 //! Builds a `postings::PostingsIndex` with ~100 documents, extracts doc-ID lists
-//! for several terms, then compresses each list with `cnk::RocCompressor`.
+//! for several terms, then compresses each list with `cnk::DeltaVarintCompressor`.
 //! Prints a comparison table: raw size, delta-encoded size, cnk-compressed size,
 //! and bits-per-id for each term's posting list.
 
-use cnk::{IdSetCompressor, RocCompressor};
+use cnk::{DeltaVarintCompressor, IdSetCompressor};
 use postings::codec::gaps_from_sorted_ids;
 use postings::PostingsIndex;
 
@@ -120,7 +120,7 @@ fn main() {
     selected.sort_by_key(|t| std::cmp::Reverse(idx.df(t)));
 
     // -- 3. Compress each posting list and collect stats --
-    let compressor = RocCompressor::new();
+    let compressor = DeltaVarintCompressor::new();
     let mut rows: Vec<Row> = Vec::new();
     let mut all_ok = true;
 

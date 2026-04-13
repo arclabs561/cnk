@@ -39,8 +39,8 @@
 //! - `len` is the number of payload bytes.
 //! - `crc` is IEEE CRC32 over the payload bytes.
 
-use crate::choose::CodecChoice;
-use crate::{compress_set_auto, AutoConfig, CompressionError, IdCompressionMethod};
+use crate::choose::{ChooseConfig, CodecChoice};
+use crate::{compress_set_auto, CompressionError, IdCompressionMethod};
 
 const MAGIC_V1: &[u8; 8] = b"CNKENV01";
 const MAGIC_V2: &[u8; 8] = b"CNKENV02";
@@ -48,20 +48,21 @@ const MAGIC_V2: &[u8; 8] = b"CNKENV02";
 fn method_tag(m: &IdCompressionMethod) -> u8 {
     match m {
         IdCompressionMethod::None => 0,
-        IdCompressionMethod::Roc => 1,
+        IdCompressionMethod::DeltaVarint => 1,
         IdCompressionMethod::EliasFano => 2,
         IdCompressionMethod::PartitionedEliasFano => 3,
-        IdCompressionMethod::WaveletTree => 4,
     }
 }
 
 fn tag_method(tag: u8) -> Result<IdCompressionMethod, CompressionError> {
     match tag {
         0 => Ok(IdCompressionMethod::None),
-        1 => Ok(IdCompressionMethod::Roc),
+        1 => Ok(IdCompressionMethod::DeltaVarint),
         2 => Ok(IdCompressionMethod::EliasFano),
         3 => Ok(IdCompressionMethod::PartitionedEliasFano),
-        4 => Ok(IdCompressionMethod::WaveletTree),
+        4 => Err(CompressionError::DecompressionFailed(
+            "reserved tag 4 (wavelet tree) is not supported".to_string(),
+        )),
         _ => Err(CompressionError::DecompressionFailed(format!(
             "unknown envelope method tag: {tag}"
         ))),
@@ -234,7 +235,7 @@ fn parse_envelope(bytes: &[u8]) -> Result<ParsedEnvelope<'_>, CompressionError> 
 pub fn compress_set_enveloped(
     ids: &[u32],
     universe_size: u32,
-    cfg: AutoConfig,
+    cfg: ChooseConfig,
 ) -> Result<Vec<u8>, CompressionError> {
     let (choice0, payload) = compress_set_auto(ids, universe_size, cfg)?;
     let choice = normalize_choice(choice0);
@@ -277,10 +278,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn envelope_roundtrip_roc() {
+    fn envelope_roundtrip_delta_varint() {
         let ids: Vec<u32> = (0..256).map(|i| i * 10).collect();
         let u = 100_000;
-        let bytes = compress_set_enveloped(&ids, u, AutoConfig::default()).unwrap();
+        let bytes = compress_set_enveloped(&ids, u, ChooseConfig::default()).unwrap();
         let (_choice, u2, back) = decompress_set_enveloped(&bytes).unwrap();
         assert_eq!(u2, u);
         assert_eq!(back, ids);
@@ -289,7 +290,7 @@ mod tests {
     #[test]
     fn envelope_v2_wire_golden_header() {
         let choice = CodecChoice {
-            method: IdCompressionMethod::Roc,
+            method: IdCompressionMethod::DeltaVarint,
             partition_block_size: 0,
         };
         let u = 123u32;
@@ -300,7 +301,7 @@ mod tests {
         // CRC32(payload=[1,2,3]) = 0x55bc801d, little-endian bytes: 1d 80 bc 55.
         let expected: Vec<u8> = vec![
             // MAGIC_V2
-            b'C', b'N', b'K', b'E', b'N', b'V', b'0', b'2', // tag = Roc
+            b'C', b'N', b'K', b'E', b'N', b'V', b'0', b'2', // tag = DeltaVarint
             1,    // pbs = 0
             0, 0, 0, 0, // u = 123
             0x7b, 0, 0, 0, // n = 7
@@ -315,7 +316,7 @@ mod tests {
     #[test]
     fn envelope_v2_crc_mismatch_is_detected() {
         let choice = CodecChoice {
-            method: IdCompressionMethod::Roc,
+            method: IdCompressionMethod::DeltaVarint,
             partition_block_size: 0,
         };
         let u = 123u32;
@@ -337,7 +338,7 @@ mod tests {
     fn envelope_roundtrip_small_set() {
         let ids = vec![1u32, 5, 10, 20, 50, 100, 200, 500];
         let u = 1000;
-        let bytes = compress_set_enveloped(&ids, u, AutoConfig::default()).unwrap();
+        let bytes = compress_set_enveloped(&ids, u, ChooseConfig::default()).unwrap();
         let (_choice, u2, back) = decompress_set_enveloped(&bytes).unwrap();
         assert_eq!(u2, u);
         assert_eq!(back, ids);
@@ -347,7 +348,7 @@ mod tests {
     fn envelope_v1_is_still_decodable() {
         let ids: Vec<u32> = (0..256).map(|i| i * 10).collect();
         let u = 100_000;
-        let (choice0, payload) = compress_set_auto(&ids, u, AutoConfig::default()).unwrap();
+        let (choice0, payload) = compress_set_auto(&ids, u, ChooseConfig::default()).unwrap();
         let choice = normalize_choice(choice0);
         let bytes_v1 = encode_v1(&choice, u, &payload);
         let (_choice2, u2, back) = decompress_set_enveloped(&bytes_v1).unwrap();

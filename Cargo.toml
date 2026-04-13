@@ -1,9 +1,9 @@
 [package]
 name = "cnk"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
-description = "ID set compression primitives (delta+varint, Elias-Fano; bits-back ROC planned)"
+description = "ID set compression with auto codec selection"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/arclabs561/cnk"
 keywords = ["compression", "entropy", "inverted-index"]

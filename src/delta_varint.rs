@@ -1,79 +1,55 @@
-//! Random Order Coding (ROC) compressor for sets of IDs.
+//! Delta+varint compressor for sorted ID sets.
 //!
-//! Implements compression for sets of IDs where order doesn't matter.
-//! Based on "Compressing multisets with large alphabets" (Severo et al., 2022).
-//!
-//! # Theory
-//!
-//! A set of `n` elements from universe `[N]` has `C(N, n)` possible sets.
-//! A sequence has `N!/(N-n)!` possible sequences.
-//! Savings: `log(n!)` bits ≈ `n log n` bits.
-//!
-//! The current implementation uses delta encoding as a practical baseline.
-//! Full ROC with bits-back ANS would achieve near-optimal compression.
+//! Encodes gaps between sorted IDs as varints.
 
 use crate::error::CompressionError;
 use crate::traits::IdSetCompressor;
 
-/// Delta+varint compressor for sorted, unique ID sets.
-///
-/// Despite the name, this is not yet true Random Order Coding (bits-back ANS).
-/// It uses delta encoding with varint, which is a practical baseline. True ROC
-/// requires the streaming ANS API (`RansEncoder`/`RansDecoder`) and is planned.
-///
-/// # Performance
-///
-/// - Compression ratio: 2-4x for typical workloads
-/// - Optimal for: IVF clusters, HNSW neighbor lists
-/// - Full ROC (future) would achieve 5-7x
-pub struct RocCompressor {
-    /// ANS quantization precision (for future full ROC).
-    #[allow(dead_code)]
-    ans_precision: u32,
+/// Estimate varint bytes needed to encode a value.
+fn varint_bytes(value: u64) -> usize {
+    if value == 0 {
+        return 1;
+    }
+    let bits = 64 - value.leading_zeros() as usize;
+    bits.div_ceil(7)
 }
 
-impl RocCompressor {
-    /// Create a new ROC compressor with default precision.
+/// Estimate compressed size for delta+varint encoding.
+fn estimated_varint_size(num_ids: usize, universe_size: u32) -> usize {
+    if num_ids == 0 {
+        return 0;
+    }
+    let n = num_ids as u64;
+    let u = universe_size as u64;
+    if n > u {
+        return 0;
+    }
+
+    // Mean gap for uniformly distributed IDs
+    let mean_gap = if n <= 1 { u } else { u / n };
+
+    // count varint + first_id varint + (n-1) gap varints
+    let count_bytes = varint_bytes(n);
+    let first_id_bytes = varint_bytes(mean_gap); // first ID ~ mean_gap for uniform
+    let gap_bytes = if n > 1 {
+        (n as usize - 1) * varint_bytes(mean_gap)
+    } else {
+        0
+    };
+
+    count_bytes + first_id_bytes + gap_bytes
+}
+
+/// Delta+varint compressor for sorted, unique ID sets.
+///
+/// Encodes gaps between consecutive IDs using variable-length integers.
+pub struct DeltaVarintCompressor {}
+
+impl DeltaVarintCompressor {
+    /// Create a new delta+varint compressor.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            ans_precision: 1 << 12, // 4096, good balance
-        }
-    }
-
-    /// Create ROC compressor with custom ANS precision.
-    ///
-    /// # Arguments
-    ///
-    /// * `precision` - ANS quantization precision (must be power of 2)
-    #[must_use]
-    pub fn with_precision(precision: u32) -> Self {
-        Self {
-            ans_precision: precision,
-        }
-    }
-
-    /// Calculate theoretical bits for a set.
-    ///
-    /// Uses Stirling's approximation: log(C(N, n)) ≈ n * log(N/n) + O(n)
-    fn theoretical_bits(num_ids: usize, universe_size: u32) -> f64 {
-        if num_ids == 0 {
-            return 0.0;
-        }
-
-        let n = num_ids as f64;
-        let n_val = universe_size as f64;
-
-        if n > n_val {
-            return 0.0;
-        }
-
-        let ratio = n_val / n;
-        if ratio <= 1.0 {
-            return 0.0;
-        }
-
-        n * ratio.ln() / 2.0_f64.ln()
+        Self {}
     }
 
     /// Encode a u64 as varint into the buffer.
@@ -121,7 +97,7 @@ impl RocCompressor {
     }
 }
 
-impl IdSetCompressor for RocCompressor {
+impl IdSetCompressor for DeltaVarintCompressor {
     fn compress_set(&self, ids: &[u32], universe_size: u32) -> Result<Vec<u8>, CompressionError> {
         crate::traits::validate_ids(ids)?;
 
@@ -173,6 +149,13 @@ impl IdSetCompressor for RocCompressor {
         let (num_ids, consumed) = Self::decode_varint(&compressed[offset..])?;
         offset += consumed;
 
+        if num_ids > universe_size as u64 {
+            return Err(CompressionError::DecompressionFailed(format!(
+                "declared count {} exceeds universe size {}",
+                num_ids, universe_size
+            )));
+        }
+
         if num_ids == 0 {
             return Ok(ids);
         }
@@ -216,24 +199,18 @@ impl IdSetCompressor for RocCompressor {
     }
 
     fn estimate_size(&self, num_ids: usize, universe_size: u32) -> usize {
-        if num_ids == 0 {
-            return 0;
-        }
-
-        let bits = Self::theoretical_bits(num_ids, universe_size);
-        let varint_overhead = (num_ids * 3) / 2;
-        ((bits / 8.0) as usize) + varint_overhead
+        estimated_varint_size(num_ids, universe_size)
     }
 
     fn bits_per_id(&self, num_ids: usize, universe_size: u32) -> f64 {
         if num_ids == 0 {
             return 0.0;
         }
-        Self::theoretical_bits(num_ids, universe_size) / (num_ids as f64)
+        (estimated_varint_size(num_ids, universe_size) as f64 * 8.0) / (num_ids as f64)
     }
 }
 
-impl Default for RocCompressor {
+impl Default for DeltaVarintCompressor {
     fn default() -> Self {
         Self::new()
     }
@@ -245,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_round_trip() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![1u32, 5, 10, 20, 50, 100];
         let universe_size = 1000;
 
@@ -259,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_empty_set() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let compressed = compressor.compress_set(&[], 1000).unwrap();
         assert!(compressed.is_empty());
 
@@ -269,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_unsorted_ids() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![5u32, 1, 10]; // Not sorted
 
         let result = compressor.compress_set(&ids, 1000);
@@ -278,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_duplicate_ids() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![1u32, 5, 5, 10]; // Duplicate
 
         let result = compressor.compress_set(&ids, 1000);
@@ -287,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_consecutive_ids() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids: Vec<u32> = (0..100).collect();
         let universe_size = 1000;
 
@@ -310,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_single_id() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![42u32];
 
         let compressed = compressor.compress_set(&ids, 1000).unwrap();
@@ -321,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_id_exceeds_universe() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![1000u32]; // Exceeds universe_size = 1000
 
         let result = compressor.compress_set(&ids, 1000);
@@ -330,7 +307,7 @@ mod tests {
 
     #[test]
     fn sparse_single_id() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids = vec![999_999u32];
         let universe_size = 1_000_000;
         let compressed = compressor.compress_set(&ids, universe_size).unwrap();
@@ -342,7 +319,7 @@ mod tests {
 
     #[test]
     fn dense_set() {
-        let compressor = RocCompressor::new();
+        let compressor = DeltaVarintCompressor::new();
         let ids: Vec<u32> = (0..999).collect();
         let universe_size = 1000;
         let compressed = compressor.compress_set(&ids, universe_size).unwrap();
