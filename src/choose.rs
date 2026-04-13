@@ -6,7 +6,7 @@
 use crate::stats::IdListStats;
 use crate::IdCompressionMethod;
 #[cfg(feature = "sbits")]
-use crate::{IdSetCompressor, RocCompressor};
+use crate::{DeltaVarintCompressor, IdSetCompressor};
 
 /// Configuration for the heuristic chooser.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -54,23 +54,23 @@ pub fn choose_method(stats: &IdListStats, cfg: ChooseConfig) -> CodecChoice {
     }
 
     {
-        // If succinct structures are not available in this build, Roc is the only meaningful
+        // If succinct structures are not available in this build, DeltaVarint is the only meaningful
         // non-empty choice (auto callers may still apply their own policy above this).
         #[cfg(not(feature = "sbits"))]
         {
             let _ = cfg;
             #[allow(clippy::needless_return)]
             return CodecChoice {
-                method: IdCompressionMethod::Roc,
+                method: IdCompressionMethod::DeltaVarint,
                 partition_block_size: 0,
             };
         }
 
         #[cfg(feature = "sbits")]
         {
-            // Always consider Roc.
+            // Always consider DeltaVarint.
             let mut best = CodecChoice {
-                method: IdCompressionMethod::Roc,
+                method: IdCompressionMethod::DeltaVarint,
                 partition_block_size: 0,
             };
             let mut best_bytes = estimate_choice_bytes(&best, stats);
@@ -134,10 +134,9 @@ fn choice_rank(c: &CodecChoice) -> (u8, usize) {
     // Deterministic tie-breaker: prefer “simpler” methods when estimated sizes tie.
     let method_rank = match c.method {
         IdCompressionMethod::None => 0,
-        IdCompressionMethod::Roc => 1,
+        IdCompressionMethod::DeltaVarint => 1,
         IdCompressionMethod::EliasFano => 2,
         IdCompressionMethod::PartitionedEliasFano => 3,
-        IdCompressionMethod::WaveletTree => 4,
     };
     (method_rank, c.partition_block_size)
 }
@@ -146,30 +145,18 @@ fn choice_rank(c: &CodecChoice) -> (u8, usize) {
 fn estimate_choice_bytes(choice: &CodecChoice, stats: &IdListStats) -> usize {
     match choice.method {
         IdCompressionMethod::None => 0,
-        IdCompressionMethod::Roc => {
-            RocCompressor::new().estimate_size(stats.n, stats.universe_size)
+        IdCompressionMethod::DeltaVarint => {
+            DeltaVarintCompressor::new().estimate_size(stats.n, stats.universe_size)
         }
         #[cfg(feature = "sbits")]
-        IdCompressionMethod::EliasFano => estimate_elias_fano_bytes(stats.n, stats.universe_size),
+        IdCompressionMethod::EliasFano => {
+            crate::EliasFanoCompressor::new().estimate_size(stats.n, stats.universe_size)
+        }
         #[cfg(feature = "sbits")]
         IdCompressionMethod::PartitionedEliasFano => {
             estimate_partitioned_elias_fano_bytes(stats, choice.partition_block_size.max(1))
         }
-        _ => usize::MAX / 2,
     }
-}
-
-#[cfg(feature = "sbits")]
-fn estimate_elias_fano_bytes(num_ids: usize, universe_size: u32) -> usize {
-    if num_ids == 0 || universe_size == 0 {
-        return 0;
-    }
-    let n = num_ids as u64;
-    let u = universe_size as u64;
-    if n == 0 || u == 0 || n > u {
-        return 0;
-    }
-    bits_to_bytes(ef_total_bits(n, u)).saturating_add(32)
 }
 
 #[cfg(feature = "sbits")]

@@ -1,21 +1,25 @@
 //! Benchmarks for ID set compression.
 
-use cnk::{IdSetCompressor, RocCompressor};
+use cnk::{DeltaVarintCompressor, IdSetCompressor};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 fn bench_compress(c: &mut Criterion) {
     let mut group = c.benchmark_group("compress");
 
-    let compressor = RocCompressor::new();
+    let compressor = DeltaVarintCompressor::new();
 
     for num_ids in [100, 1000, 10000] {
         let ids: Vec<u32> = (0..num_ids).map(|i| i * 100).collect();
         let universe_size = num_ids * 100 + 10_000;
 
         group.throughput(Throughput::Elements(num_ids as u64));
-        group.bench_with_input(BenchmarkId::new("roc", num_ids), &num_ids, |bench, _| {
-            bench.iter(|| compressor.compress_set(black_box(&ids), black_box(universe_size)))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("delta_varint", num_ids),
+            &num_ids,
+            |bench, _| {
+                bench.iter(|| compressor.compress_set(black_box(&ids), black_box(universe_size)))
+            },
+        );
 
         #[cfg(feature = "sbits")]
         {
@@ -45,7 +49,7 @@ fn bench_compress(c: &mut Criterion) {
 fn bench_decompress(c: &mut Criterion) {
     let mut group = c.benchmark_group("decompress");
 
-    let compressor = RocCompressor::new();
+    let compressor = DeltaVarintCompressor::new();
 
     for num_ids in [100, 1000, 10000] {
         let ids: Vec<u32> = (0..num_ids).map(|i| i * 100).collect();
@@ -53,11 +57,15 @@ fn bench_decompress(c: &mut Criterion) {
         let compressed = compressor.compress_set(&ids, universe_size).unwrap();
 
         group.throughput(Throughput::Elements(num_ids as u64));
-        group.bench_with_input(BenchmarkId::new("roc", num_ids), &num_ids, |bench, _| {
-            bench.iter(|| {
-                compressor.decompress_set(black_box(&compressed), black_box(universe_size))
-            })
-        });
+        group.bench_with_input(
+            BenchmarkId::new("delta_varint", num_ids),
+            &num_ids,
+            |bench, _| {
+                bench.iter(|| {
+                    compressor.decompress_set(black_box(&compressed), black_box(universe_size))
+                })
+            },
+        );
 
         #[cfg(feature = "sbits")]
         {
@@ -91,23 +99,27 @@ fn bench_decompress(c: &mut Criterion) {
 fn bench_round_trip(c: &mut Criterion) {
     let mut group = c.benchmark_group("round_trip");
 
-    let compressor = RocCompressor::new();
+    let compressor = DeltaVarintCompressor::new();
 
     for num_ids in [100, 1000] {
         let ids: Vec<u32> = (0..num_ids).map(|i| i * 100).collect();
         let universe_size = num_ids * 100 + 10_000;
 
         group.throughput(Throughput::Elements(num_ids as u64));
-        group.bench_with_input(BenchmarkId::new("roc", num_ids), &num_ids, |bench, _| {
-            bench.iter(|| {
-                let compressed = compressor
-                    .compress_set(black_box(&ids), black_box(universe_size))
-                    .unwrap();
-                compressor
-                    .decompress_set(black_box(&compressed), black_box(universe_size))
-                    .unwrap()
-            })
-        });
+        group.bench_with_input(
+            BenchmarkId::new("delta_varint", num_ids),
+            &num_ids,
+            |bench, _| {
+                bench.iter(|| {
+                    let compressed = compressor
+                        .compress_set(black_box(&ids), black_box(universe_size))
+                        .unwrap();
+                    compressor
+                        .decompress_set(black_box(&compressed), black_box(universe_size))
+                        .unwrap()
+                })
+            },
+        );
 
         #[cfg(feature = "sbits")]
         {

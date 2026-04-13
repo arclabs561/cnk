@@ -1,15 +1,8 @@
-//! Convenience “auto” API: choose + compress/decompress with feature-aware fallbacks.
+//! Convenience "auto" API: choose + compress/decompress with feature-aware fallbacks.
 
 use crate::choose::{choose_method, ChooseConfig, CodecChoice};
 use crate::stats::IdListStats;
-use crate::{CompressionError, IdCompressionMethod, IdSetCompressor, RocCompressor};
-
-/// Configuration for `compress_set_auto`.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct AutoConfig {
-    /// Heuristic chooser configuration.
-    pub choose: ChooseConfig,
-}
+use crate::{CompressionError, DeltaVarintCompressor, IdCompressionMethod, IdSetCompressor};
 
 /// Choose a method (feature-aware) and compress.
 ///
@@ -21,13 +14,13 @@ pub struct AutoConfig {
 pub fn compress_set_auto(
     ids: &[u32],
     universe_size: u32,
-    cfg: AutoConfig,
+    cfg: ChooseConfig,
 ) -> Result<(CodecChoice, Vec<u8>), CompressionError> {
     // Stats are cheap; compressors validate sorted+unique bounds.
     let stats = IdListStats::from_sorted_unique(ids, universe_size);
-    let choice0 = choose_method(&stats, cfg.choose);
+    let choice0 = choose_method(&stats, cfg);
 
-    // Feature-aware fallback: if `sbits` is not enabled, we can only do Roc/None.
+    // Feature-aware fallback: if `sbits` is not enabled, we can only do DeltaVarint/None.
     #[cfg(not(feature = "sbits"))]
     let choice = {
         if matches!(
@@ -35,7 +28,7 @@ pub fn compress_set_auto(
             IdCompressionMethod::EliasFano | IdCompressionMethod::PartitionedEliasFano
         ) {
             CodecChoice {
-                method: IdCompressionMethod::Roc,
+                method: IdCompressionMethod::DeltaVarint,
                 partition_block_size: 0,
             }
         } else {
@@ -47,7 +40,9 @@ pub fn compress_set_auto(
 
     let bytes = match choice.method {
         IdCompressionMethod::None => Vec::new(),
-        IdCompressionMethod::Roc => RocCompressor::new().compress_set(ids, universe_size)?,
+        IdCompressionMethod::DeltaVarint => {
+            DeltaVarintCompressor::new().compress_set(ids, universe_size)?
+        }
         #[cfg(feature = "sbits")]
         IdCompressionMethod::EliasFano => {
             crate::EliasFanoCompressor::new().compress_set(ids, universe_size)?
@@ -59,6 +54,7 @@ pub fn compress_set_auto(
             )
             .compress_set(ids, universe_size)?
         }
+        #[cfg(not(feature = "sbits"))]
         _ => {
             return Err(CompressionError::CompressionFailed(
                 "unsupported compression method in this build".to_string(),
@@ -82,7 +78,9 @@ pub fn decompress_set_auto(
 ) -> Result<Vec<u32>, CompressionError> {
     match choice.method {
         IdCompressionMethod::None => Ok(Vec::new()),
-        IdCompressionMethod::Roc => RocCompressor::new().decompress_set(compressed, universe_size),
+        IdCompressionMethod::DeltaVarint => {
+            DeltaVarintCompressor::new().decompress_set(compressed, universe_size)
+        }
         #[cfg(feature = "sbits")]
         IdCompressionMethod::EliasFano => {
             crate::EliasFanoCompressor::new().decompress_set(compressed, universe_size)
@@ -91,6 +89,7 @@ pub fn decompress_set_auto(
         IdCompressionMethod::PartitionedEliasFano => {
             crate::PartitionedEliasFanoCompressor::new().decompress_set(compressed, universe_size)
         }
+        #[cfg(not(feature = "sbits"))]
         _ => Err(CompressionError::DecompressionFailed(
             "unsupported compression method in this build".to_string(),
         )),
@@ -105,7 +104,7 @@ mod tests {
     fn auto_roundtrip_smoke() {
         let ids: Vec<u32> = (0..256).map(|i| i * 10).collect();
         let u = 10_000;
-        let (choice, bytes) = compress_set_auto(&ids, u, AutoConfig::default()).unwrap();
+        let (choice, bytes) = compress_set_auto(&ids, u, ChooseConfig::default()).unwrap();
         let back = decompress_set_auto(choice, &bytes, u).unwrap();
         assert_eq!(ids, back);
     }
@@ -115,7 +114,7 @@ mod tests {
         let ids: Vec<u32> = (0..100).collect();
         let universe_size = 1000;
         let (choice, compressed) =
-            compress_set_auto(&ids, universe_size, AutoConfig::default()).unwrap();
+            compress_set_auto(&ids, universe_size, ChooseConfig::default()).unwrap();
         let decompressed = decompress_set_auto(choice, &compressed, universe_size).unwrap();
         assert_eq!(ids, decompressed);
     }
@@ -125,7 +124,7 @@ mod tests {
         let ids: Vec<u32> = vec![];
         let universe_size = 1000;
         let (choice, compressed) =
-            compress_set_auto(&ids, universe_size, AutoConfig::default()).unwrap();
+            compress_set_auto(&ids, universe_size, ChooseConfig::default()).unwrap();
         assert!(compressed.is_empty());
         let decompressed = decompress_set_auto(choice, &compressed, universe_size).unwrap();
         assert!(decompressed.is_empty());
