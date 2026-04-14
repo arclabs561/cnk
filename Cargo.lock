@@ -19,12 +19,9 @@ checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
 name = "ans"
-version = "0.1.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "612963cee76637f7858b01e68d902f9bb7b5505c923b263b965eb511aef5603f"
-dependencies = [
- "thiserror",
-]
+checksum = "030aea3622b58a6866c92714971a51aa12190f572742f928fee886a670d83ff3"
 
 [[package]]
 name = "anstyle"
@@ -573,12 +570,9 @@ dependencies = [
 
 [[package]]
 name = "sbits"
-version = "0.1.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a84987d8f4f300cf93fd514e68fca26e9b8be214371e678c1ea467f9146df65c"
-dependencies = [
- "thiserror",
-]
+checksum = "4c8d96b96265e2144f5c598d2aba7ea66976fa7c80b6d2531fca80fd028621f4"
 
 [[package]]
 name = "serde"
