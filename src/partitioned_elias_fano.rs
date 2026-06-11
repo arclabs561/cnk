@@ -48,7 +48,9 @@ impl IdSetCompressor for PartitionedEliasFanoCompressor {
             }
         }
 
-        let pef = sbits::PartitionedEliasFano::new(ids, universe_size, self.block_size);
+        let ids64: Vec<u64> = ids.iter().map(|&v| u64::from(v)).collect();
+        let pef =
+            sbits::PartitionedEliasFano::new(&ids64, u64::from(universe_size), self.block_size);
         Ok(pef.to_bytes())
     }
 
@@ -67,7 +69,7 @@ impl IdSetCompressor for PartitionedEliasFanoCompressor {
             ))
         })?;
 
-        if pef.universe_size() != universe_size {
+        if pef.universe_size() != u64::from(universe_size) {
             return Err(CompressionError::DecompressionFailed(format!(
                 "Universe mismatch: encoded {} vs requested {}",
                 pef.universe_size(),
@@ -80,6 +82,9 @@ impl IdSetCompressor for PartitionedEliasFanoCompressor {
             let v = pef
                 .get(i)
                 .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))?;
+            let v = u32::try_from(v).map_err(|_| {
+                CompressionError::DecompressionFailed(format!("decoded value {v} exceeds u32"))
+            })?;
             out.push(v);
         }
         Ok(out)
