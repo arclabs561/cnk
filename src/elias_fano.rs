@@ -30,7 +30,8 @@ impl IdSetCompressor for EliasFanoCompressor {
             }
         }
 
-        let ef = sbits::EliasFano::new(ids, universe_size);
+        let ids64: Vec<u64> = ids.iter().map(|&v| u64::from(v)).collect();
+        let ef = sbits::EliasFano::new(&ids64, u64::from(universe_size));
         Ok(ef.to_bytes())
     }
 
@@ -47,7 +48,7 @@ impl IdSetCompressor for EliasFanoCompressor {
             CompressionError::DecompressionFailed(format!("EliasFano decode failed: {e}"))
         })?;
 
-        if ef.universe_size() != universe_size {
+        if ef.universe_size() != u64::from(universe_size) {
             return Err(CompressionError::DecompressionFailed(format!(
                 "Universe mismatch: encoded {} vs requested {}",
                 ef.universe_size(),
@@ -60,6 +61,9 @@ impl IdSetCompressor for EliasFanoCompressor {
             let v = ef
                 .get(i)
                 .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))?;
+            let v = u32::try_from(v).map_err(|_| {
+                CompressionError::DecompressionFailed(format!("decoded value {v} exceeds u32"))
+            })?;
             out.push(v);
         }
         Ok(out)
