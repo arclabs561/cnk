@@ -21,9 +21,9 @@ assert_eq!(ids, restored);
 ```
 
 A set of size n from universe [N] has C(N, n) possibilities, so the
-information-theoretic minimum is log₂ C(N, n) bits. The codecs in `cnk`
-are practical baselines (delta+varint, Elias-Fano); near-optimal coding
-via bits-back ANS is planned but not yet implemented.
+information-theoretic minimum is log₂ C(N, n) bits. `cnk` ships practical
+baselines (delta+varint, Elias-Fano) plus near-optimal coding via bits-back
+ANS (`RocCompressor`, behind the `ans` feature), which approaches that bound.
 
 ## Codecs
 
@@ -32,6 +32,7 @@ via bits-back ANS is planned but not yet implemented.
 | `DeltaVarintCompressor`          | (always available) | no          |
 | `EliasFanoCompressor`            | `sbits`          | yes           |
 | `PartitionedEliasFanoCompressor` | `sbits`          | yes           |
+| `RocCompressor`                  | `ans`            | no            |
 
 ## Auto selection
 
