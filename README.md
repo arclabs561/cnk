@@ -55,6 +55,12 @@ Enables Elias-Fano and Partitioned Elias-Fano codecs powered by `sbits`.
 Useful when random access or skipping inside lists matters (posting lists,
 graph structures).
 
+## Examples
+
+Runnable examples live in [`examples/`](examples/):
+
+- `compressed_postings` compresses an inverted-index posting list with cnk, the storage-shrink use these ID-set codecs exist for.
+
 ## Non-goals
 
 - **Not a set object**: cnk compresses to byte streams. For intersection,
