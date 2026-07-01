@@ -419,7 +419,7 @@ fn fallback_decompress(
 /// ROC (Random Order Coding) compressor for sorted, unique ID sets.
 ///
 /// Approaches the information-theoretic minimum of log₂ C(N, n) bits
-/// for a set of n elements from universe [N]. Uses bits-back coding
+/// for a set of n elements from universe `[N]`. Uses bits-back coding
 /// with rANS to exploit ordering invariance.
 ///
 /// For very small sets (n <= 2), falls back to delta+varint encoding
