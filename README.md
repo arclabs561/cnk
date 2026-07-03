@@ -59,7 +59,7 @@ graph structures).
 
 Runnable examples live in [`examples/`](examples/):
 
-- `compressed_postings` compresses an inverted-index posting list with cnk, the storage-shrink use these ID-set codecs exist for.
+- `compressed_postings` compresses an inverted-index posting list with cnk, the storage-shrink use case these ID-set codecs exist for.
 
 ## Non-goals
 
