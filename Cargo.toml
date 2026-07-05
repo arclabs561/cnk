@@ -1,6 +1,6 @@
 [package]
 name = "cnk"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
 description = "ID set compression with auto codec selection"
@@ -21,7 +21,7 @@ sbits = ["dep:sbits"]
 full = ["ans", "sbits"]
 
 [dependencies]
-ans = { version = "0.3", optional = true }
+ans = { version = "0.4", optional = true }
 sbits = { version = "0.2", optional = true }
 crc32fast = "1.4"
 [lib]
