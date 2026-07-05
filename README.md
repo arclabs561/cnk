@@ -46,8 +46,8 @@ size, element count, and a CRC32 in a self-describing header.
 
 Auto selection currently chooses among delta+varint, Elias-Fano, and
 partitioned Elias-Fano when the relevant features are enabled. `RocCompressor`
-is available directly behind the `ans` feature, but is not selected by the
-default chooser.
+is an experimental rANS-backed sorted-set codec behind the `ans` feature, but
+is not selected by the default chooser.
 
 ## Succinct baselines (feature `sbits`)
 
@@ -60,6 +60,7 @@ graph structures).
 Runnable examples live in [`examples/`](examples/):
 
 - `compressed_postings` compresses an inverted-index posting list with cnk, the storage-shrink use case these ID-set codecs exist for.
+- `roc_set_bounds` compares the `ans`-feature codec against the `log2 C(N,n)` set bound.
 
 ## Non-goals
 

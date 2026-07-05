@@ -32,6 +32,11 @@ proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
 postings = "0.2"
 
+[[example]]
+name = "roc_set_bounds"
+path = "examples/roc_set_bounds.rs"
+required-features = ["ans"]
+
 [[bench]]
 name = "compression"
 harness = false

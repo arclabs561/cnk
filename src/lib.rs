@@ -10,7 +10,7 @@
 //! # Compression Methods
 //!
 //! - **Delta+varint** (`DeltaVarintCompressor`): practical baseline, varint-encodes gaps between sorted IDs
-//! - **ROC** (feature `ans`): near-optimal set compression via bits-back ANS, approaches log₂ C(N,n) bits
+//! - **ROC** (feature `ans`): experimental rANS-backed sorted-set codec
 //! - **Elias-Fano** (feature `sbits`): succinct monotone-sequence codec with random access
 //! - **Partitioned Elias-Fano** (feature `sbits`): cluster-aware variant
 //!
@@ -52,6 +52,7 @@ mod partitioned_elias_fano;
 mod roc;
 mod stats;
 mod traits;
+mod varint;
 
 #[cfg(feature = "ans")]
 mod ans;
@@ -73,7 +74,7 @@ pub use traits::{validate_ids, IdSetCompressor};
 /// Deprecated alias for [`DeltaVarintCompressor`].
 ///
 /// Note: when the `ans` feature is enabled, `cnk::RocCompressor` refers to
-/// the true ROC compressor (bits-back ANS), not this alias.
+/// the experimental rANS-backed sorted-set codec, not this alias.
 #[cfg(not(feature = "ans"))]
 #[deprecated(since = "0.2.0", note = "renamed to DeltaVarintCompressor")]
 pub type RocCompressor = DeltaVarintCompressor;
@@ -90,7 +91,7 @@ pub enum IdCompressionMethod {
     PartitionedEliasFano,
     /// Delta+varint encoding (gap-coded sorted sequences).
     DeltaVarint,
-    /// ROC (bits-back ANS set coding), approaches log₂ C(N,n) bits.
+    /// Experimental rANS-backed sorted-set codec.
     #[cfg(feature = "ans")]
     Roc,
 }

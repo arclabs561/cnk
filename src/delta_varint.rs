@@ -51,50 +51,6 @@ impl DeltaVarintCompressor {
     pub fn new() -> Self {
         Self {}
     }
-
-    /// Encode a u64 as varint into the buffer.
-    #[inline]
-    fn encode_varint(value: u64, buf: &mut Vec<u8>) {
-        let mut val = value;
-        while val >= 0x80 {
-            buf.push((val as u8) | 0x80);
-            val >>= 7;
-        }
-        buf.push(val as u8);
-    }
-
-    /// Decode a varint from the buffer, returning (value, bytes_consumed).
-    #[inline]
-    fn decode_varint(buf: &[u8]) -> Result<(u64, usize), CompressionError> {
-        let mut value = 0u64;
-        let mut shift = 0;
-        let mut offset = 0;
-
-        loop {
-            if offset >= buf.len() {
-                return Err(CompressionError::DecompressionFailed(
-                    "Unexpected end of compressed data".to_string(),
-                ));
-            }
-
-            if shift > 56 {
-                return Err(CompressionError::DecompressionFailed(
-                    "Varint encoding too large".to_string(),
-                ));
-            }
-
-            let byte = buf[offset];
-            offset += 1;
-            value |= ((byte & 0x7F) as u64) << shift;
-
-            if (byte & 0x80) == 0 {
-                break;
-            }
-            shift += 7;
-        }
-
-        Ok((value, offset))
-    }
 }
 
 impl IdSetCompressor for DeltaVarintCompressor {
@@ -118,15 +74,15 @@ impl IdSetCompressor for DeltaVarintCompressor {
         let mut encoded = Vec::new();
 
         // Store number of IDs
-        Self::encode_varint(ids.len() as u64, &mut encoded);
+        crate::varint::encode(ids.len() as u64, &mut encoded);
 
         // Delta encode IDs
         if let Some(&first) = ids.first() {
-            Self::encode_varint(first as u64, &mut encoded);
+            crate::varint::encode(first as u64, &mut encoded);
 
             for i in 1..ids.len() {
                 let delta = ids[i] - ids[i - 1];
-                Self::encode_varint(delta as u64, &mut encoded);
+                crate::varint::encode(delta as u64, &mut encoded);
             }
         }
 
@@ -146,7 +102,7 @@ impl IdSetCompressor for DeltaVarintCompressor {
         let mut offset = 0;
 
         // Decode number of IDs
-        let (num_ids, consumed) = Self::decode_varint(&compressed[offset..])?;
+        let (num_ids, consumed) = crate::varint::decode(&compressed[offset..])?;
         offset += consumed;
 
         if num_ids > universe_size as u64 {
@@ -161,7 +117,7 @@ impl IdSetCompressor for DeltaVarintCompressor {
         }
 
         // Decode first ID
-        let (first_id, consumed) = Self::decode_varint(&compressed[offset..])?;
+        let (first_id, consumed) = crate::varint::decode(&compressed[offset..])?;
         offset += consumed;
 
         if first_id >= universe_size as u64 {
@@ -174,7 +130,7 @@ impl IdSetCompressor for DeltaVarintCompressor {
 
         // Decode deltas
         for _ in 1..num_ids {
-            let (delta, consumed) = Self::decode_varint(&compressed[offset..])?;
+            let (delta, consumed) = crate::varint::decode(&compressed[offset..])?;
             offset += consumed;
 
             let next_id = ids.last().unwrap() + delta as u32;

@@ -1,23 +1,30 @@
-//! ROC (Random Order Coding) compressor for ID sets.
+//! rANS-backed sorted-set compressor.
 //!
-//! Implements near-optimal set compression using bits-back coding with rANS.
-//! Based on "Compressing multisets with large alphabets" (Severo et al., 2022).
+//! This module is inspired by Random Order Coding, but the implementation below
+//! does not implement the full BB-ANS random-order sampling loop from Severo et
+//! al. It encodes a canonical sorted representation with a local uniform rANS
+//! coder.
 //!
 //! A set of n elements from universe [N] has C(N, n) possible values.
-//! ROC approaches the information-theoretic minimum of log₂ C(N, n) bits
-//! by treating the permutation of set elements as a latent variable and
-//! recovering log₂(n!) "free bits" via bits-back ANS coding.
+//! Full ROC would treat the permutation of set elements as a latent variable
+//! and recover log2(n!) ordering bits via bits-back ANS coding. This codec does
+//! not currently recover those bits; compare the byte length against
+//! `log2 C(N, n)` before using it as a storage format.
 //!
-//! The key bijection: for a sorted set {s₀ < s₁ < ... < sₙ₋₁} ⊂ [N],
-//! the value `sᵢ - i` lies in [0, N-i) and represents the i-th element
-//! in a shrinking universe. Encoding these N-i uniform symbols with rANS
-//! costs exactly log₂(N · (N-1) · ... · (N-n+1)) bits. The bits-back
-//! trick recovers log₂(n!) of those bits, leaving log₂ C(N, n).
+//! The key bijection used here: for a sorted set {s0 < s1 < ... < s(n-1)} in
+//! [N], the value `s_i - i` lies in [0, N-i) and represents the i-th element in
+//! a shrinking universe. Encoding these N-i uniform symbols with rANS targets
+//! log2(N * (N-1) * ... * (N-n+1)) bits before coder overhead. A full BB-ANS
+//! ROC layer would additionally recover ordering bits.
 
 use crate::error::CompressionError;
 use crate::traits::IdSetCompressor;
 
-/// rANS lower bound, must match the `ans` crate's value.
+/// rANS lower bound used by this module's uniform coder.
+///
+/// Keep this in sync with the `ans` crate's 32-bit rANS lower bound while ROC
+/// keeps a local uniform coder to avoid `FrequencyTable` allocation for large
+/// alphabets.
 const RANS_L: u32 = 1 << 23;
 
 // ---------------------------------------------------------------------------
@@ -178,51 +185,10 @@ fn log2_choose(n: u64, k: u64) -> f64 {
 }
 
 // ---------------------------------------------------------------------------
-// Varint helpers (shared with delta_varint.rs but kept private here)
-// ---------------------------------------------------------------------------
-
-#[inline]
-fn encode_varint(value: u64, buf: &mut Vec<u8>) {
-    let mut val = value;
-    while val >= 0x80 {
-        buf.push((val as u8) | 0x80);
-        val >>= 7;
-    }
-    buf.push(val as u8);
-}
-
-#[inline]
-fn decode_varint(buf: &[u8]) -> Result<(u64, usize), CompressionError> {
-    let mut value = 0u64;
-    let mut shift = 0;
-    let mut offset = 0;
-    loop {
-        if offset >= buf.len() {
-            return Err(CompressionError::DecompressionFailed(
-                "ROC: truncated varint".to_string(),
-            ));
-        }
-        if shift > 56 {
-            return Err(CompressionError::DecompressionFailed(
-                "ROC: varint too large".to_string(),
-            ));
-        }
-        let byte = buf[offset];
-        offset += 1;
-        value |= ((byte & 0x7F) as u64) << shift;
-        if (byte & 0x80) == 0 {
-            break;
-        }
-        shift += 7;
-    }
-    Ok((value, offset))
-}
-
-// ---------------------------------------------------------------------------
 // ROC compress / decompress
 // ---------------------------------------------------------------------------
 
-/// Compress a sorted, unique ID set using ROC (bits-back ANS).
+/// Compress a sorted, unique ID set with the rANS-backed canonical codec.
 ///
 /// Wire format: `[n: varint] [rANS bytes (stack format)]`
 fn roc_compress(ids: &[u32], universe_size: u32) -> Result<Vec<u8>, CompressionError> {
@@ -279,7 +245,7 @@ fn roc_compress(ids: &[u32], universe_size: u32) -> Result<Vec<u8>, CompressionE
 
     // Prepend the count as varint.
     let mut out = Vec::with_capacity(10 + buf.len());
-    encode_varint(n as u64, &mut out);
+    crate::varint::encode(n as u64, &mut out);
     out.extend_from_slice(&buf);
 
     Ok(out)
@@ -292,7 +258,7 @@ fn roc_decompress(compressed: &[u8], universe_size: u32) -> Result<Vec<u32>, Com
     }
 
     // Parse count.
-    let (n64, hdr_len) = decode_varint(compressed)?;
+    let (n64, hdr_len) = crate::varint::decode(compressed)?;
     let n = n64 as usize;
 
     if n == 0 {
@@ -364,11 +330,11 @@ fn roc_decompress(compressed: &[u8], universe_size: u32) -> Result<Vec<u32>, Com
 
 fn fallback_compress(ids: &[u32], _universe_size: u32) -> Result<Vec<u8>, CompressionError> {
     let mut out = Vec::new();
-    encode_varint(ids.len() as u64, &mut out);
+    crate::varint::encode(ids.len() as u64, &mut out);
     if let Some(&first) = ids.first() {
-        encode_varint(first as u64, &mut out);
+        crate::varint::encode(first as u64, &mut out);
         for i in 1..ids.len() {
-            encode_varint((ids[i] - ids[i - 1]) as u64, &mut out);
+            crate::varint::encode((ids[i] - ids[i - 1]) as u64, &mut out);
         }
     }
     Ok(out)
@@ -386,7 +352,7 @@ fn fallback_decompress(
         return Ok(ids);
     }
 
-    let (first, consumed) = decode_varint(&data[offset..])?;
+    let (first, consumed) = crate::varint::decode(&data[offset..])?;
     offset += consumed;
     if first >= universe_size as u64 {
         return Err(CompressionError::DecompressionFailed(format!(
@@ -397,7 +363,7 @@ fn fallback_decompress(
     ids.push(first as u32);
 
     for _ in 1..n {
-        let (delta, consumed) = decode_varint(&data[offset..])?;
+        let (delta, consumed) = crate::varint::decode(&data[offset..])?;
         offset += consumed;
         let next = ids.last().unwrap() + delta as u32;
         if next >= universe_size {
@@ -416,11 +382,11 @@ fn fallback_decompress(
 // Public compressor struct
 // ---------------------------------------------------------------------------
 
-/// ROC (Random Order Coding) compressor for sorted, unique ID sets.
+/// Experimental rANS-backed compressor for sorted, unique ID sets.
 ///
-/// Approaches the information-theoretic minimum of log₂ C(N, n) bits
-/// for a set of n elements from universe `[N]`. Uses bits-back coding
-/// with rANS to exploit ordering invariance.
+/// The information-theoretic minimum for a set of n elements from universe
+/// `[N]` is `log2 C(N, n)` bits. This implementation encodes a canonical sorted
+/// representation with rANS and should be measured against that bound.
 ///
 /// For very small sets (n <= 2), falls back to delta+varint encoding
 /// since rANS overhead exceeds the savings.
@@ -542,7 +508,7 @@ mod tests {
     }
 
     #[test]
-    fn compression_ratio_near_optimal() {
+    fn compression_ratio_has_bound_headroom() {
         let c = RocCompressor::new();
         let ids: Vec<u32> = (0..100).map(|i| i * 100).collect();
         let u = 100_000;
@@ -550,7 +516,8 @@ mod tests {
         let theoretical_bits = log2_choose(u as u64, ids.len() as u64);
         let actual_bits = compressed.len() as f64 * 8.0;
 
-        // Should be within 2x of the information-theoretic bound.
+        // The current codec is not full BB-ANS ROC, but should still avoid
+        // pathological expansion on this sparse set.
         assert!(
             actual_bits < theoretical_bits * 2.0 + 64.0,
             "actual {} bits too far from theoretical {} bits",

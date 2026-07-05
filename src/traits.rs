@@ -19,7 +19,9 @@ use crate::error::CompressionError;
 /// The information-theoretic lower bound is `log2(C(N, n))` bits.
 /// This is significantly less than encoding a sequence (`N^n` possibilities).
 ///
-/// Implementations should aim to approach this bound.
+/// Implementations can report this bound as a target, but actual codecs may
+/// spend extra bits for byte alignment, headers, random access, or simpler
+/// encoding structure.
 pub trait IdSetCompressor {
     /// Compress a set of IDs (order-invariant).
     ///
