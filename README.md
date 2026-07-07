@@ -2,7 +2,6 @@
 
 [![crates.io](https://img.shields.io/crates/v/cnk.svg)](https://crates.io/crates/cnk)
 [![Documentation](https://docs.rs/cnk/badge.svg)](https://docs.rs/cnk)
-[![CI](https://github.com/arclabs561/cnk/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/cnk/actions/workflows/ci.yml)
 
 ID set compression with auto codec selection.
 
