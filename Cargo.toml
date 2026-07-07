@@ -1,6 +1,6 @@
 [package]
 name = "cnk"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Arc <attobop@gmail.com>"]
 edition = "2021"
 description = "ID set compression with auto codec selection"
@@ -30,7 +30,7 @@ path = "src/lib.rs"
 [dev-dependencies]
 proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
-postings = "0.2"
+postings = "0.3"
 
 [[example]]
 name = "roc_set_bounds"
