@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the compressed-postings example to use `postings 0.4`.
+
 ## [0.2.2] - 2026-07-07
 
 ### Changed
