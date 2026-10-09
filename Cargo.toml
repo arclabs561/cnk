@@ -6,8 +6,11 @@ edition = "2021"
 description = "ID set compression with auto codec selection"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/arclabs561/cnk"
+documentation = "https://docs.rs/cnk"
+rust-version = "1.75"
 keywords = ["compression", "entropy", "inverted-index"]
 categories = ["compression", "algorithms"]
+include = ["/src", "/tests", "/examples", "/benches", "/README.md", "/CHANGELOG.md", "/LICENSE*"]
 
 [workspace]
 
