@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 //! ID set compression primitives.
 //!
 //! `cnk` provides compression algorithms for sorted, unique ID sets where
