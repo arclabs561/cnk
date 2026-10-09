@@ -133,14 +133,16 @@ impl IdSetCompressor for DeltaVarintCompressor {
             let (delta, consumed) = crate::varint::decode(&compressed[offset..])?;
             offset += consumed;
 
-            let next_id = ids.last().unwrap() + delta as u32;
-            if next_id >= universe_size {
+            // Widen before adding: a corrupt delta must not wrap or truncate
+            // into a small in-universe ID.
+            let next_id = u64::from(*ids.last().unwrap()).saturating_add(delta);
+            if next_id >= universe_size as u64 {
                 return Err(CompressionError::DecompressionFailed(format!(
                     "ID {} exceeds universe size {}",
                     next_id, universe_size
                 )));
             }
-            ids.push(next_id);
+            ids.push(next_id as u32);
         }
 
         // Verify we consumed all data
@@ -283,5 +285,22 @@ mod tests {
             .decompress_set(&compressed, universe_size)
             .unwrap();
         assert_eq!(ids, decompressed);
+    }
+
+    /// A corrupt delta that would overflow u32 (or exceed it entirely) must be
+    /// rejected, not wrapped into a small in-universe ID.
+    #[test]
+    fn rejects_delta_overflowing_u32() {
+        let c = DeltaVarintCompressor::new();
+        for delta in [u64::from(u32::MAX) - 5, u64::from(u32::MAX) + 3] {
+            let mut buf = Vec::new();
+            crate::varint::encode(2, &mut buf); // count
+            crate::varint::encode(10, &mut buf); // first id
+            crate::varint::encode(delta, &mut buf);
+            assert!(
+                c.decompress_set(&buf, 100).is_err(),
+                "delta {delta} decoded instead of erroring"
+            );
+        }
     }
 }

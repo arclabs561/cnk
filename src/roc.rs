@@ -46,12 +46,22 @@ fn rans_encode_uniform(
     sym: u32,
     alphabet: u32,
     precision: u32,
-) {
+) -> Result<(), CompressionError> {
     let total = 1u32 << precision;
 
     // Compute freq and cdf for this symbol using the spread formula.
     let freq = spread_freq(sym, alphabet, total);
     let start = spread_cdf(sym, alphabet, total);
+
+    // Precision is capped at 20 bits, so once `alphabet > 2^20` every symbol
+    // at or above `total` gets freq 0. It cannot be coded, and with freq 0 the
+    // renormalization bound below is 0, so the loop would never exit.
+    if freq == 0 {
+        return Err(CompressionError::CompressionFailed(format!(
+            "ROC: symbol {} not representable with alphabet {} at {}-bit precision",
+            sym, alphabet, precision
+        )));
+    }
 
     // Renormalize: emit bytes while state is too large.
     let x_max = ((RANS_L >> precision) << 8) * freq;
@@ -63,6 +73,7 @@ fn rans_encode_uniform(
     let q = *state / freq;
     let r = *state - q * freq;
     *state = (q << precision) + r + start;
+    Ok(())
 }
 
 /// Decode a uniform symbol from the rANS state.
@@ -237,7 +248,7 @@ fn roc_compress(ids: &[u32], universe_size: u32) -> Result<Vec<u8>, CompressionE
             )));
         }
         let prec = precision_for(alphabet);
-        rans_encode_uniform(&mut state, &mut buf, sym, alphabet, prec);
+        rans_encode_uniform(&mut state, &mut buf, sym, alphabet, prec)?;
     }
 
     // Write final state.
@@ -365,14 +376,15 @@ fn fallback_decompress(
     for _ in 1..n {
         let (delta, consumed) = crate::varint::decode(&data[offset..])?;
         offset += consumed;
-        let next = ids.last().unwrap() + delta as u32;
-        if next >= universe_size {
+        // Widen before adding so a corrupt delta cannot wrap or truncate.
+        let next = u64::from(*ids.last().unwrap()).saturating_add(delta);
+        if next >= universe_size as u64 {
             return Err(CompressionError::DecompressionFailed(format!(
                 "ROC fallback: ID {} exceeds universe {}",
                 next, universe_size
             )));
         }
-        ids.push(next);
+        ids.push(next as u32);
     }
 
     Ok(ids)
@@ -585,5 +597,37 @@ mod tests {
         // Edge cases
         assert_eq!(log2_choose(10, 0), 0.0);
         assert_eq!(log2_choose(10, 10), 0.0);
+    }
+
+    /// The 20-bit coder cannot represent a symbol `id - rank >= 2^20`. This
+    /// used to spin forever in renormalization (freq 0 gives x_max 0); it must
+    /// return an error instead.
+    #[test]
+    fn rejects_symbol_beyond_coder_precision_instead_of_hanging() {
+        let c = RocCompressor::new();
+        assert!(c
+            .compress_set(&[5, 1_500_000, 1_999_999], 2_000_000)
+            .is_err());
+        // Symbols below 2^20 in the same universe stay encodable (wire format
+        // unchanged).
+        let ids = vec![5u32, 500_000, 1_000_000];
+        let compressed = c.compress_set(&ids, 2_000_000).unwrap();
+        assert_eq!(c.decompress_set(&compressed, 2_000_000).unwrap(), ids);
+    }
+
+    /// The n <= 2 fallback must reject a delta that overflows u32.
+    #[test]
+    fn fallback_rejects_delta_overflowing_u32() {
+        let c = RocCompressor::new();
+        for delta in [u64::from(u32::MAX) - 5, u64::from(u32::MAX) + 3] {
+            let mut buf = Vec::new();
+            crate::varint::encode(2, &mut buf);
+            crate::varint::encode(10, &mut buf);
+            crate::varint::encode(delta, &mut buf);
+            assert!(
+                c.decompress_set(&buf, 100).is_err(),
+                "delta {delta} decoded instead of erroring"
+            );
+        }
     }
 }

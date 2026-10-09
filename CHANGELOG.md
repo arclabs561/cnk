@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `RocCompressor::compress_set` returns an error instead of looping forever
+  when a symbol `id - rank` is at least 2^20 (the coder's precision limit).
+  The wire format is unchanged.
+- Delta-varint and the ROC small-set fallback reject a corrupt delta that
+  overflows `u32` instead of wrapping (release) or panicking (debug).
+
 ## [0.2.3] - 2026-07-09
 
 ### Changed
