@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-09
+
 ### Fixed
 
 - `RocCompressor::compress_set` returns an error instead of looping forever
