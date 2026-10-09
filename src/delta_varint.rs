@@ -133,6 +133,13 @@ impl IdSetCompressor for DeltaVarintCompressor {
             let (delta, consumed) = crate::varint::decode(&compressed[offset..])?;
             offset += consumed;
 
+            // Ids are strictly increasing, so a zero delta is a duplicate id.
+            if delta == 0 {
+                return Err(CompressionError::DecompressionFailed(
+                    "zero delta: duplicate ID".to_string(),
+                ));
+            }
+
             // Widen before adding: a corrupt delta must not wrap or truncate
             // into a small in-universe ID.
             let next_id = u64::from(*ids.last().unwrap()).saturating_add(delta);
@@ -285,6 +292,22 @@ mod tests {
             .decompress_set(&compressed, universe_size)
             .unwrap();
         assert_eq!(ids, decompressed);
+    }
+
+    /// The encoder only accepts strictly increasing ids, so a decoded delta of
+    /// zero is a duplicate id that no valid stream contains.
+    #[test]
+    fn rejects_zero_delta_duplicate_id() {
+        let c = DeltaVarintCompressor::new();
+        let mut buf = Vec::new();
+        crate::varint::encode(3, &mut buf); // count
+        crate::varint::encode(10, &mut buf); // first id
+        crate::varint::encode(5, &mut buf); // 15
+        crate::varint::encode(0, &mut buf); // 15 again
+        assert!(
+            c.decompress_set(&buf, 100).is_err(),
+            "duplicate id decoded instead of erroring"
+        );
     }
 
     /// A corrupt delta that would overflow u32 (or exceed it entirely) must be

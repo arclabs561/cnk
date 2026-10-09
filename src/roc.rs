@@ -312,7 +312,10 @@ fn roc_decompress(compressed: &[u8], universe_size: u32) -> Result<Vec<u32>, Com
     let mut cursor = cursor_init;
 
     let u = universe_size;
-    let mut ids = Vec::with_capacity(n);
+    // `n` comes from the input and may be as large as the universe; bound the
+    // up-front reservation by the payload size (the Vec still grows if a
+    // valid stream needs more).
+    let mut ids = Vec::with_capacity(n.min(compressed.len().saturating_mul(8)));
 
     for i in 0..n {
         let alphabet = u - i as u32;
@@ -376,6 +379,12 @@ fn fallback_decompress(
     for _ in 1..n {
         let (delta, consumed) = crate::varint::decode(&data[offset..])?;
         offset += consumed;
+        // Ids are strictly increasing, so a zero delta is a duplicate id.
+        if delta == 0 {
+            return Err(CompressionError::DecompressionFailed(
+                "ROC fallback: zero delta (duplicate ID)".to_string(),
+            ));
+        }
         // Widen before adding so a corrupt delta cannot wrap or truncate.
         let next = u64::from(*ids.last().unwrap()).saturating_add(delta);
         if next >= universe_size as u64 {
@@ -613,6 +622,20 @@ mod tests {
         let ids = vec![5u32, 500_000, 1_000_000];
         let compressed = c.compress_set(&ids, 2_000_000).unwrap();
         assert_eq!(c.decompress_set(&compressed, 2_000_000).unwrap(), ids);
+    }
+
+    /// The n <= 2 fallback must reject a zero delta: it encodes a duplicate id.
+    #[test]
+    fn fallback_rejects_zero_delta_duplicate_id() {
+        let c = RocCompressor::new();
+        let mut buf = Vec::new();
+        crate::varint::encode(2, &mut buf);
+        crate::varint::encode(10, &mut buf);
+        crate::varint::encode(0, &mut buf);
+        assert!(
+            c.decompress_set(&buf, 100).is_err(),
+            "duplicate id decoded instead of erroring"
+        );
     }
 
     /// The n <= 2 fallback must reject a delta that overflows u32.

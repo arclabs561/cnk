@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The wire format is unchanged.
 - Delta-varint and the ROC small-set fallback reject a corrupt delta that
   overflows `u32` instead of wrapping (release) or panicking (debug).
+- Delta-varint and the ROC small-set fallback reject a zero delta (a duplicate
+  id), and the Elias-Fano decoders reject a stream that decodes a repeated id;
+  `compress_set` never produces either.
+- ROC decoding bounds its up-front allocation by the input size instead of the
+  declared count, so a short corrupt stream cannot reserve gigabytes.
 
 ## [0.2.3] - 2026-07-09
 

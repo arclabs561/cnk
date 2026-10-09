@@ -64,6 +64,13 @@ impl IdSetCompressor for EliasFanoCompressor {
             let v = u32::try_from(v).map_err(|_| {
                 CompressionError::DecompressionFailed(format!("decoded value {v} exceeds u32"))
             })?;
+            // Elias-Fano allows repeats, but compress_set only takes strictly
+            // increasing ids, so a repeat means the stream is corrupt.
+            if out.last().is_some_and(|&prev| v <= prev) {
+                return Err(CompressionError::DecompressionFailed(format!(
+                    "decoded IDs not strictly increasing at index {i}"
+                )));
+            }
             out.push(v);
         }
         Ok(out)
@@ -97,5 +104,20 @@ impl IdSetCompressor for EliasFanoCompressor {
             return 0.0;
         }
         (self.estimate_size(num_ids, universe_size) as f64 * 8.0) / (num_ids as f64)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The encoder only accepts strictly increasing ids, so a stream that
+    /// decodes to a repeated id is corrupt and must not come back as a set.
+    #[test]
+    fn rejects_a_stream_that_decodes_a_duplicate_id() {
+        let bytes = sbits::EliasFano::new(&[3, 7, 7, 9], 100).to_bytes();
+        assert!(EliasFanoCompressor::new()
+            .decompress_set(&bytes, 100)
+            .is_err());
     }
 }
