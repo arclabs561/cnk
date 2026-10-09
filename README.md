@@ -19,7 +19,7 @@ let (_, _, restored) = decompress_set_enveloped(&bytes).unwrap();
 assert_eq!(ids, restored);
 ```
 
-A set of size n from universe [N] has C(N, n) possibilities, so the
+A set of size n from universe \[N\] has C(N, n) possibilities, so the
 information-theoretic minimum is log₂ C(N, n) bits. `cnk` provides byte-stream
 codecs for sorted, unique `u32` ID sets.
 
