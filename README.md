@@ -5,6 +5,15 @@
 
 ID set compression with auto codec selection.
 
+Compress sorted, unique `u32` IDs to bytes and restore them later. Supply a
+universe size greater than every ID. The envelope API stores the codec and
+parameters with the data, so decoding needs only the bytes.
+
+```toml
+[dependencies]
+cnk = "0.2"
+```
+
 ```rust
 use cnk::{compress_set_enveloped, decompress_set_enveloped, ChooseConfig};
 
@@ -19,58 +28,44 @@ let (_, _, restored) = decompress_set_enveloped(&bytes).unwrap();
 assert_eq!(ids, restored);
 ```
 
-A set of size n from universe \[N\] has C(N, n) possibilities, so the
-information-theoretic minimum is log₂ C(N, n) bits. `cnk` provides byte-stream
-codecs for sorted, unique `u32` ID sets.
-
 ## Codecs
 
-| Compressor                       | Feature required | Random access |
-|----------------------------------|------------------|---------------|
-| `DeltaVarintCompressor`          | (always available) | no          |
-| `EliasFanoCompressor`            | `sbits`          | yes           |
-| `PartitionedEliasFanoCompressor` | `sbits`          | yes           |
-| `RocCompressor`                  | `ans`            | no            |
+| Compressor | Feature required |
+|------------|------------------|
+| `DeltaVarintCompressor` | None |
+| `EliasFanoCompressor` | `sbits` |
+| `PartitionedEliasFanoCompressor` | `sbits` |
+| `RocCompressor` | `ans` |
+
+All compressors decode the complete set into a `Vec<u32>`. These APIs do not
+expose random access to the compressed data.
 
 ## Auto selection
 
-`compress_set_auto` / `decompress_set_auto` choose a codec based on list
-statistics (gap distribution, density). The returned `CodecChoice` should
-be recorded alongside the bytes so decode does not depend on build-time
-defaults.
+`compress_set_auto` chooses a codec from the list's gap distribution and
+density. Pass the returned `CodecChoice` to `decompress_set_auto` when decoding.
 
 For persistence, prefer the envelope API (`compress_set_enveloped` /
 `decompress_set_enveloped`) which stores codec, parameters, universe
 size, element count, and a CRC32 in a self-describing header.
 
-Auto selection currently chooses among delta+varint, Elias-Fano, and
-partitioned Elias-Fano when the relevant features are enabled. `RocCompressor`
-is an experimental rANS-backed sorted-set codec behind the `ans` feature, but
-is not selected by the default chooser.
-
-## Succinct baselines (feature `sbits`)
-
-Enables Elias-Fano and Partitioned Elias-Fano codecs powered by `sbits`.
-Useful when random access or skipping inside lists matters (posting lists,
-graph structures).
+Auto selection chooses among delta+varint, Elias-Fano, and
+partitioned Elias-Fano when the relevant features are enabled. The `ans`
+feature enables the experimental rANS-backed `RocCompressor`. Use it directly;
+the default chooser does not select it.
 
 ## Examples
 
 Runnable examples live in [`examples/`](examples/):
 
-- `compressed_postings` compresses an inverted-index posting list with cnk, the storage-shrink use case these ID-set codecs exist for.
+- `compressed_postings` compresses the document IDs from a posting list.
 - `roc_set_bounds` compares the `ans`-feature codec against the `log2 C(N,n)` set bound.
 
-## Non-goals
+## Limitations
 
-- **Not a set object**: cnk compresses to byte streams. For intersection,
-  union, or in-memory set operations, use `roaring`.
-- **Not a framework**: query planning, scoring, and segment management
-  belong in the engine layer (e.g. tantivy).
-- **Not general-purpose compression**: requires sorted, unique u32 IDs and
-  a universe size.
-- **Not an optimal-codec searcher**: the chooser is deterministic and
-  conservative. Benchmark on the target distribution when codec choice is
-  load-bearing.
+The codecs require sorted, unique IDs; they do not provide set operations or
+indexing. The chooser is deterministic and uses size estimates rather than
+trying every codec. Compare compressed sizes on your data when that choice
+matters.
 
 Dual-licensed under MIT or Apache-2.0.

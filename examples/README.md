@@ -10,7 +10,7 @@ Each example is runnable from the repo root.
 ## Example dependencies
 
 `compressed_postings` builds a small `postings::PostingsIndex`, extracts sorted
-document ID lists, and compresses them with `cnk`.
+lists of document IDs, and compresses them with `cnk`.
 
 `roc_set_bounds` uses `RocCompressor`, which requires the `ans` feature, and
 prints byte counts next to the `log2 C(N,n)` lower bound.
