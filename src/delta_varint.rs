@@ -113,6 +113,11 @@ impl IdSetCompressor for DeltaVarintCompressor {
         }
 
         if num_ids == 0 {
+            if offset != compressed.len() {
+                return Err(CompressionError::DecompressionFailed(
+                    "extra data after empty set".to_string(),
+                ));
+            }
             return Ok(ids);
         }
 

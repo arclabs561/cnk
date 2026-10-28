@@ -79,7 +79,10 @@ pub fn decompress_set_auto(
     universe_size: u32,
 ) -> Result<Vec<u32>, CompressionError> {
     match choice.method {
-        IdCompressionMethod::None => Ok(Vec::new()),
+        IdCompressionMethod::None if compressed.is_empty() => Ok(Vec::new()),
+        IdCompressionMethod::None => Err(CompressionError::DecompressionFailed(
+            "unexpected payload for empty set".to_string(),
+        )),
         IdCompressionMethod::DeltaVarint => {
             DeltaVarintCompressor::new().decompress_set(compressed, universe_size)
         }

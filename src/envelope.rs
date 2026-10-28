@@ -157,16 +157,16 @@ fn parse_envelope(bytes: &[u8]) -> Result<ParsedEnvelope<'_>, CompressionError> 
         off += 4;
         let n = read_u32_le(bytes, off)?;
         off += 4;
-        let payload_len = read_u64_le(bytes, off)? as usize;
+        let payload_len = read_u64_le(bytes, off)?;
         off += 8;
         let expected_crc = read_u32_le(bytes, off)?;
         off += 4;
-        if off + payload_len != bytes.len() {
+        if payload_len != (bytes.len() - off) as u64 {
             return Err(CompressionError::DecompressionFailed(
                 "envelope payload length mismatch".to_string(),
             ));
         }
-        let payload = &bytes[off..off + payload_len];
+        let payload = &bytes[off..];
         let got_crc = crc32(payload);
         if got_crc != expected_crc {
             return Err(CompressionError::DecompressionFailed(
@@ -202,14 +202,14 @@ fn parse_envelope(bytes: &[u8]) -> Result<ParsedEnvelope<'_>, CompressionError> 
         off += 4;
         let universe_size = read_u32_le(bytes, off)?;
         off += 4;
-        let payload_len = read_u64_le(bytes, off)? as usize;
+        let payload_len = read_u64_le(bytes, off)?;
         off += 8;
-        if off + payload_len != bytes.len() {
+        if payload_len != (bytes.len() - off) as u64 {
             return Err(CompressionError::DecompressionFailed(
                 "envelope payload length mismatch".to_string(),
             ));
         }
-        let payload = &bytes[off..off + payload_len];
+        let payload = &bytes[off..];
         let method = tag_method(tag)?;
         let choice = normalize_choice(CodecChoice {
             method,
