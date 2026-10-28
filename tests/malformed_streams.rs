@@ -38,3 +38,21 @@ fn none_codec_rejects_nonempty_payload() {
     );
     assert!(decompress_set_auto(choice, &[42], 100).is_err());
 }
+
+#[cfg(feature = "sbits")]
+#[test]
+fn elias_fano_rejects_ids_outside_the_declared_universe() {
+    let codec = cnk::EliasFanoCompressor::new();
+    let mut bytes = codec.compress_set(&[9], 16).unwrap();
+    bytes[8..16].copy_from_slice(&9u64.to_le_bytes());
+    assert!(codec.decompress_set(&bytes, 9).is_err());
+}
+
+#[cfg(feature = "sbits")]
+#[test]
+fn partitioned_elias_fano_rejects_ids_outside_the_declared_universe() {
+    let codec = cnk::PartitionedEliasFanoCompressor::new();
+    let mut bytes = codec.compress_set(&[9], 16).unwrap();
+    bytes[8..16].copy_from_slice(&9u64.to_le_bytes());
+    assert!(codec.decompress_set(&bytes, 9).is_err());
+}

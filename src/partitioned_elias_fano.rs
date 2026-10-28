@@ -85,6 +85,11 @@ impl IdSetCompressor for PartitionedEliasFanoCompressor {
             let v = u32::try_from(v).map_err(|_| {
                 CompressionError::DecompressionFailed(format!("decoded value {v} exceeds u32"))
             })?;
+            if v >= universe_size {
+                return Err(CompressionError::DecompressionFailed(format!(
+                    "decoded ID {v} exceeds universe size {universe_size}"
+                )));
+            }
             // Elias-Fano allows repeats, but compress_set only takes strictly
             // increasing ids, so a repeat means the stream is corrupt.
             if out.last().is_some_and(|&prev| v <= prev) {
