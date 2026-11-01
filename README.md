@@ -43,16 +43,13 @@ expose random access to the compressed data.
 ## Auto selection
 
 `compress_set_auto` chooses a codec from the list's gap distribution and
-density. Pass the returned `CodecChoice` to `decompress_set_auto` when decoding.
+density: delta+varint, Elias-Fano, or partitioned Elias-Fano with `sbits`
+enabled, and delta+varint otherwise. Pass the returned `CodecChoice` to
+`decompress_set_auto` when decoding. The envelope API records the choice for
+you, along with universe size, element count, and a CRC32.
 
-For persistence, prefer the envelope API (`compress_set_enveloped` /
-`decompress_set_enveloped`) which stores codec, parameters, universe
-size, element count, and a CRC32 in a self-describing header.
-
-Auto selection chooses among delta+varint, Elias-Fano, and
-partitioned Elias-Fano when the relevant features are enabled. The `ans`
-feature enables the experimental rANS-backed `RocCompressor`. Use it directly;
-the default chooser does not select it.
+The `ans` feature adds the experimental rANS-backed `RocCompressor`. Use it
+directly; the chooser does not select it.
 
 ## Examples
 
