@@ -39,6 +39,22 @@ fn none_codec_rejects_nonempty_payload() {
     assert!(decompress_set_auto(choice, &[42], 100).is_err());
 }
 
+/// `IdSetCompressor::decompress_set` documents an error for trailing bytes.
+#[cfg(feature = "ans")]
+#[test]
+fn roc_rejects_unconsumed_bytes() {
+    let codec = cnk::RocCompressor::new();
+    // rANS path (n > 2): the decoder reads backwards from the final state, so
+    // bytes spliced in after the one-byte count header are never consumed.
+    let mut bytes = codec.compress_set(&[3, 10, 77, 500, 900], 1000).unwrap();
+    bytes.splice(1..1, [0xAB, 0xCD, 0xEF]);
+    assert!(codec.decompress_set(&bytes, 1000).is_err());
+    // Delta-varint fallback (n <= 2).
+    let mut bytes = codec.compress_set(&[3, 10], 1000).unwrap();
+    bytes.push(0x01);
+    assert!(codec.decompress_set(&bytes, 1000).is_err());
+}
+
 #[cfg(feature = "sbits")]
 #[test]
 fn elias_fano_rejects_ids_outside_the_declared_universe() {
