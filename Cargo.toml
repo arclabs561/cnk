@@ -33,7 +33,7 @@ path = "src/lib.rs"
 [dev-dependencies]
 proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
-postings = "0.4"
+postings = "0.6"
 
 [[example]]
 name = "roc_set_bounds"
