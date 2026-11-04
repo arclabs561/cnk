@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-11-03
+
+### Fixed
+
+- Decoders reject malformed input they used to accept: `DeltaVarint` and
+  `decompress_set_auto` reject bytes after an empty set, and the envelope
+  parser compares the stored payload length without overflowing `usize`.
+- `EliasFano` and `PartitionedEliasFano` decompression reject decoded ids at
+  or above `universe_size`, as compression already does.
+
 ## [0.2.4] - 2026-10-09
 
 ### Fixed
