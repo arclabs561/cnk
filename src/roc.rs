@@ -325,6 +325,15 @@ fn roc_decompress(compressed: &[u8], universe_size: u32) -> Result<Vec<u32>, Com
         ids.push(element);
     }
 
+    // Decoding inverts encoding exactly, so a valid stream ends in the
+    // encoder's initial state with every byte consumed.
+    if cursor != 0 || state != RANS_L {
+        return Err(CompressionError::DecompressionFailed(format!(
+            "ROC: {} unconsumed rANS bytes, final state {} (expected {})",
+            cursor, state, RANS_L
+        )));
+    }
+
     // Verify sorted and unique (should be guaranteed by construction).
     for w in ids.windows(2) {
         if w[1] <= w[0] {
@@ -394,6 +403,13 @@ fn fallback_decompress(
             )));
         }
         ids.push(next as u32);
+    }
+
+    if offset != data.len() {
+        return Err(CompressionError::DecompressionFailed(format!(
+            "ROC fallback: {} trailing bytes",
+            data.len() - offset
+        )));
     }
 
     Ok(ids)

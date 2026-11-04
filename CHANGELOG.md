@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `RocCompressor` decompression rejects trailing bytes, as
+  `IdSetCompressor::decompress_set` documents. The rANS decoder now requires
+  every byte consumed and the final state equal to the encoder's initial
+  state; the delta-varint fallback for one or two ids rejects bytes after the
+  last delta.
+
 ## [0.2.5] - 2026-11-03
 
 ### Fixed
