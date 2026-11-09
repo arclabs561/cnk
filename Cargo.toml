@@ -24,7 +24,7 @@ sbits = ["dep:sbits"]
 full = ["ans", "sbits"]
 
 [dependencies]
-ans = { version = "0.4", optional = true }
+ans = { version = "0.5", optional = true }
 sbits = { version = "0.2", optional = true }
 crc32fast = "1.4"
 [lib]
